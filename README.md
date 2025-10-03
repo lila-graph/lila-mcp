@@ -52,20 +52,22 @@ The recommended approach is to start with immediate visual testing (`fastmcp dev
 
 ### Step 1: Start the Server
 
-The Lila MCP Server is now fully self-contained with no external dependencies:
+The Lila MCP Server is fully self-contained with auto-configuration:
 
 ```bash
-# Navigate to standalone MCP directory
-cd docker/mcp-standalone
+# Start the server with Inspector (auto-detects fastmcp.json)
+fastmcp dev
 
-# Start the server with Inspector
-fastmcp dev simple_lila_mcp_server.py
+# Or explicitly from virtual environment
+/home/donbr/lila-graph/lila-mcp/.venv/bin/fastmcp dev
 
 # ✅ No external dependencies required
+# ✅ Auto-configured from fastmcp.json
 # ✅ Complete psychological intelligence system
 # ✅ All 8 tools, 3 prompts, 9 resources working
-# ✅ FastMCP debug logging enabled
 ```
+
+**Important Configuration Note**: The `fastmcp.json` file uses `"project": "."` configuration to avoid MCP Inspector bugs with version specifiers. See [Troubleshooting](#troubleshooting) section for details.
 
 ### Step 2: Test with MCP Inspector
 
@@ -124,32 +126,37 @@ fastmcp run --port 9000         # Override port if needed
 ### Alternative: Docker Deployment
 
 ```bash
-cd docker/mcp-standalone
+# Full stack deployment (Neo4j + Redis + MinIO + MCP server + Nginx)
+docker compose up -d
 
-# Full stack deployment
-docker compose up -d           # Includes Neo4j + MCP server
-
-# Or minimal deployment
-docker compose up -d mcp-server # MCP server only
+# Or minimal deployment (MCP server only, requires Neo4j separately)
+docker compose up -d neo4j mcp-server
 ```
 
-### Fallback: Explicit Dependencies
+### Server Selection: Mock vs Neo4j Data
 
-If `fastmcp.json` auto-detection fails:
+The project includes two server implementations:
 
-```bash
-# Development with explicit dependencies
-fastmcp dev simple_lila_mcp_server.py --with fastmcp --with neo4j --with pydantic --with python-dotenv
+**`simple_lila_mcp_server.py`** (Default in fastmcp.json)
+- In-memory mock data (Lila and Don personas)
+- No Neo4j required
+- Fast startup, ideal for development
+- Graceful fallback if Neo4j unavailable
 
-# Custom Inspector port if needed
-fastmcp dev simple_lila_mcp_server.py --with fastmcp --with neo4j --with pydantic --with python-dotenv --server-port 6350
+**`lila_mcp_server.py`** (Production)
+- Full Neo4j database integration
+- Real graph data queries
+- Requires Neo4j running
 
-# HTTP deployment with explicit dependencies
-fastmcp run simple_lila_mcp_server.py --transport http --port 8765 --with fastmcp --with neo4j --with pydantic --with python-dotenv
+To switch servers, edit `fastmcp.json` line 6:
+```json
+"path": "simple_lila_mcp_server.py"  // or "lila_mcp_server.py"
 ```
 
-**Environment Configuration**:
-All settings are configured in `.env` file - no need to pass environment variables manually:
+### Configuration
+
+**Environment Configuration** (`.env` file):
+All settings are configured in `.env` - no manual environment variables needed:
 - `NEO4J_URI=bolt://localhost:7687`
 - `NEO4J_USER=neo4j`
 - `NEO4J_PASSWORD=passw0rd`
@@ -157,9 +164,8 @@ All settings are configured in `.env` file - no need to pass environment variabl
 - `LOGFIRE_PROJECT_NAME=lila-autonomous-agents`
 
 **Critical Requirements**:
-- **Directory**: Must be in `docker/mcp-standalone/` directory
-- **Neo4j Running**: Use `docker compose up -d neo4j` from project root
-- **Configuration**: Uses `fastmcp.json` auto-configuration (recommended) or `--with` flags (fallback)
+- **Neo4j Running** (if using `lila_mcp_server.py`): `docker compose up -d neo4j`
+- **Configuration**: Uses `fastmcp.json` with `"project": "."` (avoids Inspector bugs)
 - **Transport**: Inspector uses STDIO transport automatically (not HTTP)
 
 **Recommended uv-Native Workflow** (avoids VIRTUAL_ENV conflicts):
@@ -730,44 +736,85 @@ For full Lila system capabilities, use the main system at the repository root.
 
 ## Troubleshooting
 
-### Inspector Connection Issues
+### MCP Inspector Connection Issues
 
-#### "Error Connecting to MCP Inspector Proxy" - SOLVED
+#### `ERR_CONNECTION_REFUSED` or `[object Object]` Error - CRITICAL
 
-**Problem**: Inspector web UI loads but shows "Error Connecting to MCP Inspector Proxy - Check Console logs"
+**Problem**: Inspector UI loads but clicking "Connect" shows:
+- `ERR_CONNECTION_REFUSED` on port 6277, OR
+- `error: Failed to spawn: '[object Object]'` in console
 
-**Root Cause**: Complex module import failures in the original server cause FastMCP to fall back to "⚠️ MCP client using enhanced mock responses (server disabled)"
-
-**Solution**: Use the simplified server instead:
-
-```bash
-# ✅ WORKING: Use simplified server
-fastmcp dev simple_simple_lila_mcp_server.py
-
-# ❌ BROKEN: Original server has import issues
-# fastmcp dev simple_lila_mcp_server.py  # This may fail with import errors
+**Root Cause**: MCP Inspector's JavaScript argument parser incorrectly handles `>=` operators in dependency version strings. When `fastmcp.json` contains:
+```json
+"dependencies": ["fastmcp>=2.12.3", "neo4j>=5.15.0"]
 ```
 
-**What was happening:**
-1. Original `simple_lila_mcp_server.py` imports local modules: `config`, `graph.database`, `system`
-2. FastMCP runs in isolated environment that can't access these modules
-3. Server fails initialization, falls back to mock responses
-4. Inspector proxy starts but has no real MCP server to connect to
-5. Web UI shows connection error
+The Inspector splits `neo4j>=5.15.0` into: `neo4j`, `[object Object]`, `=5.15.0`, causing `uv` to fail.
 
-**Validation Commands:**
+**Solution** (Already Configured): Use `"project": "."` in `fastmcp.json`:
+```json
+{
+  "environment": {
+    "type": "uv",
+    "python": "3.12",
+    "project": "."  // ✓ Uses pyproject.toml, avoids bug
+  }
+}
+```
+
+**DO NOT USE** explicit dependencies with `>=` operators in `fastmcp.json` - they will break the Inspector.
+
+#### Port Already in Use - PORT IS IN USE at port 6277
+
+**Problem**: `fastmcp dev` fails with "PORT IS IN USE at port 6277"
+
+**Root Cause**: `fastmcp dev` spawns multiple background processes (Python, node, npm, mcp-inspector) that must ALL be killed.
+
+**Solution**:
 ```bash
-# Test that simplified server works
+# Kill all related processes
+pkill -f "fastmcp dev" && pkill -f "mcp-inspector"
+
+# Wait for processes to terminate
+sleep 2
+
+# Verify ports are free
+ss -tulpn | grep -E "6274|6277"
+
+# If ports still occupied, force kill by port
+lsof -ti :6277 | xargs -r kill
+lsof -ti :6274 | xargs -r kill
+
+# Restart
+fastmcp dev
+```
+
+**Check Running Processes**:
+```bash
+# See all MCP-related processes
+ps aux | grep -E "fastmcp|mcp-inspector" | grep -v grep
+
+# Check port usage
+ss -tulpn | grep -E "6274|6277"
+```
+
+#### Inspector Proxy Shows "Error Connecting"
+
+**Problem**: Inspector web UI loads but shows connection error
+
+**Solution**: Ensure you're using the default server configuration in `fastmcp.json`:
+- Default: `simple_lila_mcp_server.py` (mock data, works without Neo4j)
+- Production: `lila_mcp_server.py` (requires Neo4j running)
+
+**Validation**:
+```bash
+# Test server capabilities
 python test_mcp_validation.py
 
 # Expected output:
-# ✅ Resources found: 6
+# ✅ Resources found: 6-9
 # ✅ Tools found: 8
 # ✅ Prompts found: 3
-# ✅ All tests completed successfully!
-
-# Check Inspector is accessible
-# http://localhost:6274/?MCP_PROXY_AUTH_TOKEN=<token>
 ```
 
 ### Virtual Environment Issues

@@ -28,14 +28,17 @@ docker compose up -d
 
 **Development with Inspector (Recommended):**
 ```bash
-# Auto-configuration using fastmcp.json
+# Auto-configuration using fastmcp.json (uses simple_lila_mcp_server.py by default)
 fastmcp dev
 
-# With custom Inspector port
-fastmcp dev --server-port 6350
+# Or explicitly from venv (if fastmcp not in PATH)
+/home/donbr/lila-graph/lila-mcp/.venv/bin/fastmcp dev
 
-# Fallback with explicit dependencies
-fastmcp dev lila_mcp_server.py --with fastmcp --with neo4j --with pydantic --with python-dotenv
+# With custom Inspector ports
+fastmcp dev --ui-port 6274 --server-port 6277
+
+# IMPORTANT: fastmcp.json uses "project": "." to avoid MCP Inspector argument parsing bugs
+# Do NOT use explicit --with dependencies as >= operators break the Inspector's JavaScript parser
 ```
 
 **Production HTTP Deployment:**
@@ -102,9 +105,9 @@ fastmcp install mcp-json
 
 ### Infrastructure
 
-- **`docker-compose.yml`** - Defines Neo4j, Redis, and MinIO services with health checks
-- **`Dockerfile`** - Container image for MCP server deployment
-- **`nginx.conf`** - Nginx reverse proxy configuration
+- **`docker-compose.yml`** - Defines Neo4j, Redis, MinIO, mcp-server, and nginx proxy with service dependencies and health checks
+- **`Dockerfile`** - Multi-stage container image using Python 3.12-slim with uv package manager
+- **`nginx.conf`** - Nginx reverse proxy on port 8080 proxying to mcp-server:8766, includes `/health` endpoint
 
 ### Configuration
 
@@ -114,10 +117,7 @@ fastmcp install mcp-json
 
 ### Graph Schemas
 
-Located in `graphs/`:
-- **`lila-graph-schema-v8.json`** - Current schema (default)
-- **`lila-graph-schema-v9.json`** - Latest schema version
-- **`lila-graph-schema-v7.json`** - Legacy schema
+Located in `graphs/` directory (schema files define Neo4j node types, relationships, and constraints)
 
 ## Key Architectural Concepts
 
@@ -161,13 +161,47 @@ ENABLE_LOGFIRE_TELEMETRY=true
 LOGFIRE_PROJECT_NAME=lila-autonomous-agents
 ```
 
+## Docker Infrastructure
+
+The system uses a multi-service Docker Compose architecture:
+
+### Service Dependencies
+```
+neo4j, redis, minio (infrastructure)
+  ↓ (depends_on with condition: service_healthy)
+mcp-server (FastMCP server on port 8766)
+  ↓ (depends_on)
+proxy (nginx on port 8080)
+```
+
+### Service Ports
+- **Neo4j**: 7474 (Browser), 7687 (Bolt)
+- **Redis**: 6379
+- **MinIO**: 9000 (API), 9001 (Console)
+- **MCP Server**: 8766 (Streamable-HTTP transport)
+- **Nginx Proxy**: 8080 (External access point)
+
+### Key Configuration Details
+- **MCP Server Command**: `uvx fastmcp run /app/fastmcp.json` (uses uv to run FastMCP in container)
+- **Neo4j Auth**: Uses `NEO4J_AUTH: "neo4j/${NEO4J_PASSWORD}"` format
+- **Neo4j Plugins**: APOC plugin enabled via `NEO4J_PLUGINS: '["apoc"]'`
+- **Network**: All services communicate via `lila-network` Docker network
+- **Volumes**: Persistent data for Neo4j (data, logs, import, plugins), Redis, and MinIO
+
+### Health Check Strategy
+- **Neo4j**: Uses cypher-shell to verify bolt connection accepts authentication
+- **Redis**: Simple `redis-cli ping`
+- **MinIO**: HTTP health endpoint check
+- **MCP Server**: Dockerfile-based healthcheck (not in docker-compose.yml) to avoid Streamable-HTTP protocol conflicts
+- **Nginx Proxy**: No healthcheck (depends on mcp-server service)
+
 ## Development Workflow
 
-1. **Start Infrastructure**: `docker compose up -d neo4j`
+1. **Start Infrastructure**: `docker compose up -d` (starts all services with proper dependencies)
 2. **Initialize Database**: `./init_mcp_database.sh` (first time only)
 3. **Develop with Inspector**: `fastmcp dev` (opens web UI for testing)
 4. **Test Changes**: `python test_mcp_validation.py`
-5. **Deploy**: `fastmcp run` (HTTP server on port 8765)
+5. **Deploy**: Production deployment runs via Docker Compose (mcp-server container)
 
 ## Testing Strategy
 
@@ -229,19 +263,108 @@ with self.driver.session() as session:
 
 ## Important Notes
 
-- Always use `simple_lila_mcp_server.py` for development (has debug logging)
-- Use `lila_mcp_server.py` for production deployments
+### Server Selection
+- **`simple_lila_mcp_server.py`** - Use for development (has debug logging, mock data fallback)
+- **`lila_mcp_server.py`** - Use for production (requires Neo4j, full database integration)
+- Default configuration in `fastmcp.json` uses `simple_lila_mcp_server.py`
+
+### FastMCP Configuration
+- **CRITICAL**: `fastmcp.json` must use `"project": "."` in environment config
+- **DO NOT** use explicit `dependencies` array with `>=` operators - breaks MCP Inspector
+- FastMCP automatically manages virtual environments via `uv`
+- The `"project": "."` configuration uses `pyproject.toml` for dependencies
+
+### MCP Protocol
 - MCP resources must return strings (typically JSON)
-- Environment variables are loaded from `.env` via `python-dotenv`
-- Neo4j connection failures are graceful (fallback to mock data)
-- FastMCP automatically manages virtual environments when using `fastmcp.json`
+- Tools receive JSON-serializable parameters and return JSON strings
+- Prompts return formatted text suitable for LLM consumption
+
+### Infrastructure
+- Environment variables loaded from `.env` via `python-dotenv`
+- Neo4j connection failures are graceful (fallback to mock data in `simple_lila_mcp_server.py`)
+- The mcp-server container runs on port 8766 with Streamable-HTTP transport
+- Nginx proxy exposes the service on port 8080 with proper SSE/streaming support
+- **Health checks**: The mcp-server healthcheck is defined in the Dockerfile (not docker-compose.yml) to avoid protocol compatibility issues with FastMCP's Streamable-HTTP transport
+
+### Testing Reference
+- See `TESTING.md` for complete testing workflow documentation
+- Two server implementations support different testing scenarios (mock vs real data)
 
 ## Troubleshooting
 
-**"Error Connecting to MCP Inspector Proxy"**: Use `simple_lila_mcp_server.py` instead of `lila_mcp_server.py`
+### MCP Inspector Connection Issues
 
-**Neo4j connection issues**: Verify Neo4j is running with `docker compose ps`, check `.env` credentials
+**Problem:** `ERR_CONNECTION_REFUSED` when clicking "Connect" in Inspector, or `error: Failed to spawn: '[object Object]'`
 
-**Port conflicts**: Use `--server-port 6350` with `fastmcp dev` to change Inspector port
+**Root Cause:** MCP Inspector's JavaScript argument parser incorrectly splits `>=` operators in dependency version strings (e.g., `fastmcp>=2.12.3` becomes `fastmcp`, `[object Object]`, `=2.12.3`)
+
+**Solution:** Use `"project": "."` in `fastmcp.json` environment configuration instead of listing individual dependencies. This is already configured correctly in the repository.
+
+**Verify Configuration:**
+```json
+{
+  "environment": {
+    "type": "uv",
+    "python": "3.12",
+    "project": "."  // ✓ Correct - uses pyproject.toml
+  }
+}
+```
+
+**Wrong Configuration (DO NOT USE):**
+```json
+{
+  "environment": {
+    "dependencies": [
+      "fastmcp>=2.12.3",  // ✗ Breaks Inspector
+      "neo4j>=5.15.0"     // ✗ Breaks Inspector
+    ]
+  }
+}
+```
+
+### Killing and Restarting FastMCP Dev
+
+**Problem:** `PORT IS IN USE at port 6277` when restarting
+
+**Root Cause:** `fastmcp dev` spawns multiple background processes (Python, node, npm, mcp-inspector) that must ALL be killed
+
+**Solution:**
+```bash
+# Kill all related processes
+pkill -f "fastmcp dev" && pkill -f "mcp-inspector"
+
+# Wait for processes to terminate
+sleep 2
+
+# Verify ports are free
+ss -tulpn | grep -E "6274|6277"
+
+# If ports still occupied, force kill by port
+lsof -ti :6277 | xargs -r kill
+lsof -ti :6274 | xargs -r kill
+
+# Restart
+/home/donbr/lila-graph/lila-mcp/.venv/bin/fastmcp dev
+```
+
+**Check Running Processes:**
+```bash
+# See all MCP-related processes
+ps aux | grep -E "fastmcp|mcp-inspector" | grep -v grep
+
+# Check port usage
+ss -tulpn | grep -E "6274|6277"
+```
+
+### Other Issues
+
+**"Error Connecting to MCP Inspector Proxy"**: Use `simple_lila_mcp_server.py` instead of `lila_mcp_server.py` (this is the default in `fastmcp.json`)
+
+**Neo4j connection issues**: Verify Neo4j is running with `docker compose ps neo4j`, check `.env` credentials
+
+**Port conflicts**: Use `--ui-port` and `--server-port` flags to change Inspector ports
 
 **Import failures**: Ensure you're in the repository root and `.env` file exists
+
+**MCP server healthcheck failures (406 Not Acceptable)**: This occurs when docker-compose healthchecks try to make simple HTTP requests to FastMCP's Streamable-HTTP transport, which requires specific MCP protocol headers. The healthcheck should be defined in the Dockerfile or removed from docker-compose.yml entirely. Do not use `curl -X POST http://localhost:8766/mcp` for healthchecks - it will return 406.

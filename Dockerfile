@@ -1,44 +1,32 @@
-# Standalone Lila MCP Server
-# Optimized for minimal dependencies and fast startup
-
+# syntax=docker/dockerfile:1.7
 FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    curl \
-    git \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates \
+ && rm -rf /var/lib/apt/lists/* \
+ && curl -LsSf https://astral.sh/uv/install.sh | env UV_NO_MODIFY_PATH=1 UV_INSTALL_DIR=/usr/local/bin sh \
+ && uv --version
 
-# Copy MCP-specific dependencies
-COPY docker/mcp-standalone/requirements.txt ./
+# deps only
+COPY pyproject.toml uv.lock* ./
+RUN uv sync --frozen --no-dev --no-install-project
 
-# Install minimal dependencies for MCP server
-RUN pip install -r requirements.txt
+# then project files
+COPY . .
+RUN uv pip install -e .
 
-# Create non-root user
-RUN groupadd -r mcp && useradd -r -g mcp mcp
+# non-root runtime
+RUN useradd -m -u 10001 appuser && chown -R appuser:appuser /app
+USER appuser
 
-# Copy minimal standalone MCP server files
-COPY --chown=mcp:mcp docker/mcp-standalone/main.py ./
-COPY --chown=mcp:mcp docker/mcp-standalone/minimal_models.py ./
-COPY --chown=mcp:mcp docker/mcp-standalone/minimal_neo4j.py ./
-COPY --chown=mcp:mcp docker/mcp-standalone/minimal_mcp_server.py ./
-COPY --chown=mcp:mcp docker/mcp-standalone/__init__.py ./
+EXPOSE 8766
+ENV MCP_HOST=0.0.0.0 MCP_PORT=8766
 
-# Set environment variables
-ENV PYTHONPATH=/app
-ENV ENV=production
-ENV LOG_LEVEL=INFO
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+  CMD curl -fsS http://127.0.0.1:8766/mcp/capabilities || exit 1
 
-# Switch to non-root user
-USER mcp
-
-# No health check in minimal implementation (removed to avoid AsyncIO conflicts)
-
-# Expose MCP server port
-EXPOSE 8765
-
-# Start MCP server
-CMD ["python", "main.py"]
+CMD ["uv", "run", "python", "lila_mcp_server.py"]

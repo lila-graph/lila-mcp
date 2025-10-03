@@ -38,6 +38,59 @@ class SimpleLilaMCPServer:
         self.app = FastMCP("lila-psychological-relationships")
         self.driver: Optional[GraphDatabase] = None
 
+        # Initialize mock data for fallback scenarios
+        self.mock_personas = {
+            "lila": {
+                "id": "lila",
+                "name": "Lila",
+                "age": 28,
+                "role": "Psychological Intelligence Agent",
+                "attachment_style": "secure",
+                "personality": {
+                    "openness": 0.8,
+                    "conscientiousness": 0.75,
+                    "extraversion": 0.65,
+                    "agreeableness": 0.85,
+                    "neuroticism": 0.3
+                }
+            },
+            "don": {
+                "id": "don",
+                "name": "Don",
+                "age": 45,
+                "role": "Software Developer",
+                "attachment_style": "anxious",
+                "personality": {
+                    "openness": 0.7,
+                    "conscientiousness": 0.8,
+                    "extraversion": 0.4,
+                    "agreeableness": 0.7,
+                    "neuroticism": 0.6
+                }
+            }
+        }
+
+        self.mock_relationships = {
+            ("lila", "don"): {
+                "trust_level": 7.5,
+                "intimacy_level": 6.8,
+                "relationship_strength": 7.2,
+                "last_updated": datetime.now().isoformat()
+            }
+        }
+
+        self.mock_interactions = [
+            {
+                "id": "int_001",
+                "sender_id": "lila",
+                "recipient_id": "don",
+                "content": "How are you feeling about our project collaboration?",
+                "emotional_valence": 0.7,
+                "relationship_impact": 0.3,
+                "timestamp": datetime.now().isoformat()
+            }
+        ]
+
         # Initialize Neo4j connection
         self._setup_database()
 
@@ -162,72 +215,6 @@ class SimpleLilaMCPServer:
             except Exception as e:
                 logger.error(f"Error querying persona {persona_id}: {e}")
                 return f'{{"error": "Error retrieving persona: {str(e)}"}}'
-                "attachment_style": "anxious",
-                "personality": {
-                    "openness": 0.9,
-                    "conscientiousness": 0.8,
-                    "extraversion": 0.4,
-                    "agreeableness": 0.7,
-                    "neuroticism": 0.6
-                }
-            }
-        }
-
-        self.mock_relationships = {
-            ("lila", "don"): {
-                "trust_level": 7.5,
-                "intimacy_level": 6.8,
-                "relationship_strength": 7.2,
-                "last_updated": datetime.now().isoformat()
-            }
-        }
-
-        self.mock_interactions = [
-            {
-                "id": "int_001",
-                "sender_id": "lila",
-                "recipient_id": "don",
-                "content": "How are you feeling about our project collaboration?",
-                "emotional_valence": 0.7,
-                "relationship_impact": 0.3,
-                "timestamp": datetime.now().isoformat()
-            }
-        ]
-
-        # Register MCP endpoints
-        self._register_resources()
-        self._register_tools()
-        self._register_prompts()
-
-        logger.info("Simplified Lila MCP Server initialized successfully")
-
-    def _register_resources(self):
-        """Register MCP resources for psychological data access."""
-
-        @self.app.resource("neo4j://personas/all")
-        def get_all_personas() -> str:
-            """Retrieve all personas with their psychological profiles."""
-            return f'''{{
-                "personas": {list(self.mock_personas.values())},
-                "count": {len(self.mock_personas)},
-                "last_updated": "{datetime.now().isoformat()}"
-            }}'''
-
-        @self.app.resource("neo4j://personas/{persona_id}")
-        def get_persona_by_id(persona_id: str) -> str:
-            """Retrieve specific persona by ID with full psychological profile."""
-            if persona_id not in self.mock_personas:
-                return f'{{"error": "Persona {persona_id} not found"}}'
-
-            persona = self.mock_personas[persona_id]
-            return f'''{{
-                "persona": {persona},
-                "relationships": [],
-                "active_goals": [
-                    {{"type": "trust", "description": "Build deeper trust", "progress": 0.6}},
-                    {{"type": "intimacy", "description": "Increase emotional intimacy", "progress": 0.4}}
-                ]
-            }}'''
 
         @self.app.resource("neo4j://relationships/all")
         def get_all_relationships() -> str:

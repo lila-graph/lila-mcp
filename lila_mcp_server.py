@@ -41,6 +41,7 @@ class LilaMCPServer:
         self._register_resources()
         self._register_tools()
         self._register_prompts()
+        self._register_health_check()
 
     def _setup_database(self):
         """Initialize Neo4j database connection."""
@@ -736,6 +737,21 @@ GENERATE:
 6. **Rationale** explaining how this builds attachment security
 
 Focus on responses that help both parties feel seen, understood, and emotionally safe while maintaining healthy boundaries."""
+
+    def _register_health_check(self):
+        """Register HTTP health check endpoint for container orchestration."""
+        from starlette.requests import Request
+        from starlette.responses import JSONResponse
+
+        @self.app.custom_route("/health", methods=["GET"])
+        async def health_check(request: Request) -> JSONResponse:
+            """Health check endpoint for load balancers and orchestration."""
+            status = {
+                "status": "healthy",
+                "service": "lila-mcp-server",
+                "neo4j_connected": self.driver is not None
+            }
+            return JSONResponse(status, status_code=200)
 
     async def run_server(self, host: str = "localhost", port: int = 8765):
         """Run the MCP server."""
