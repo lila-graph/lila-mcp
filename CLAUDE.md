@@ -486,204 +486,36 @@ docker compose down -v && docker compose up -d
 - **Nginx Proxy**: <http://localhost:8080> (production MCP endpoint)
 - **MCP Server Direct**: <http://localhost:8766> (Streamable-HTTP, requires MCP client)
 
-## Multi-Domain Agent Orchestrators
+## Repository Analyzer Framework
 
-The repository includes an extensible **multi-domain orchestrator system** that extends the proven `architecture.py` pattern into a reusable framework supporting various software development domains.
+This repository includes the **Repository Analyzer Framework** - a portable, drop-in analysis toolkit in the `ra_orchestrators/`, `ra_agents/`, and `ra_tools/` directories.
 
-### Available Orchestrators
+**Note**: The orchestrator framework is designed to be extracted and used in ANY repository. See `ra_orchestrators/CLAUDE.md` for complete framework documentation.
 
-#### Architecture Orchestrator
-Comprehensive repository analysis with 5 phases:
-
-```bash
-python -m orchestrators.architecture_orchestrator
-```
-
-**Output:** `repo_analysis/`
-- Component inventory
-- Architecture diagrams (Mermaid)
-- Data flow analysis
-- API documentation
-- Final synthesis README
-
-**Use Cases:**
-- Understanding new codebases
-- Documenting existing systems
-- Onboarding new developers
-- Architecture reviews
-
-#### UX/UI Design Orchestrator
-Complete UX design workflow with 6 phases:
+### Quick Start
 
 ```bash
-python -m orchestrators.ux_orchestrator "Project Name"
+# Architecture analysis (generates ra_output/architecture_{timestamp}/)
+python -m ra_orchestrators.architecture_orchestrator
+
+# UX design workflow (generates ra_output/ux_{timestamp}/)
+python -m ra_orchestrators.ux_orchestrator "Project Name"
 ```
 
-**Output:** `outputs/ux_design/`
-1. **User Research** - Personas, journey maps, competitive analysis
-2. **Information Architecture** - Sitemaps, navigation, wireframes
-3. **Visual Design** - Design system, mockups, responsive specs
-4. **Interactive Prototyping** - User flows, micro-interactions
-5. **API Contract Design** - Frontend-backend interface specs
-6. **Design System Documentation** - Component library, tokens, guidelines
+### Framework Documentation
 
-**Use Cases:**
-- Starting new UI/UX projects
-- Redesigning existing interfaces
-- Creating design systems
-- Validating API contracts
+For complete documentation on:
+- Adding new orchestrators and agents
+- Tool integration (Figma, MCP servers)
+- Cross-domain orchestration
+- Agent design patterns
+- Performance optimization
 
-**Tool Integration:**
-- Supports Figma MCP Server (when configured)
-- Falls back to detailed markdown specifications
-- Ready for v0, Builder.io, Anima integrations
+See **`ra_orchestrators/CLAUDE.md`** - Complete framework documentation
 
-### Orchestrator Architecture
+### Key Features
 
-All orchestrators inherit from `BaseOrchestrator` which provides:
-
-- **Phase Execution Engine** - Sequential or concurrent workflows
-- **Agent Lifecycle Management** - Load and delegate to specialized agents
-- **Progress Tracking** - Visual progress with tool usage details
-- **Cost Monitoring** - Track costs per phase and total
-- **Output Verification** - Validate expected outputs were created
-- **Error Recovery** - Graceful error handling with partial results
-
-### Agent Library
-
-Agents are defined as JSON files in `agents/{domain}/`:
-
-**Architecture Domain:**
-- `analyzer` - Code structure and pattern analysis
-- `doc_writer` - Technical documentation (shared across domains)
-
-**UX Domain:**
-- `ux_researcher` - User research, personas, journey maps
-- `ia_architect` - Information architecture, sitemaps
-- `ui_designer` - Visual design with optional Figma integration
-- `prototype_developer` - Interactive prototyping
-
-**Agents are reusable** across orchestrators - for example, `doc_writer` is used by both Architecture and UX orchestrators.
-
-### Tool Integration Layer
-
-`tools/` directory provides integration with external services:
-
-- **MCP Registry** (`mcp_registry.py`) - Auto-discover available MCP servers
-- **Figma Integration** (`figma_integration.py`) - Figma MCP and REST API wrapper
-- Future: Builder.io, Anima API, v0 integrations
-
-**Setup Figma Integration:**
-
-```bash
-# Option 1: Set environment variable
-export FIGMA_ACCESS_TOKEN="your_token"
-
-# Option 2: Configure Figma MCP in Claude Code
-# See tools/figma_integration.py for detailed setup
-```
-
-### Extending the System
-
-**Add a new domain orchestrator in <1 day:**
-
-1. Create `orchestrators/custom_orchestrator.py`:
-```python
-from orchestrators.base_orchestrator import BaseOrchestrator
-
-class CustomOrchestrator(BaseOrchestrator):
-    def __init__(self):
-        super().__init__(domain_name="custom")
-
-    def get_agent_definitions(self):
-        return {"agent1": AgentDefinition(...)}
-
-    def get_allowed_tools(self):
-        return ["Read", "Write", "Grep"]
-
-    async def run(self):
-        await self.phase_1_task()
-        await self.phase_2_task()
-```
-
-2. Create agent JSON files in `agents/custom/`
-
-3. Run: `python -m orchestrators.custom_orchestrator`
-
-### Research Documentation
-
-See `claude-agents-research.md` (832 lines) for comprehensive research on:
-- 15+ UI/UX design automation tools (October 2025)
-- Multi-agent orchestration patterns
-- Tool evaluation matrix (7 dimensions)
-- SDLC and DevOps agent patterns
-- Claude Agent SDK best practices
-- Implementation roadmap
-
-**Key Finding:** Modular toolkit approach (Figma MCP + Anima/Builder.io + specialized agents) is superior to single-tool dependency like v0 alone.
-
-### Performance & Cost
-
-**Benchmarks (approximate):**
-- Architecture Analysis: 5-10 minutes, $1-3
-- UX Design Workflow: 10-20 minutes, $3-8
-- Cost varies with codebase/project size
-
-**Optimization:**
-- Concurrent phase execution (future)
-- Context compaction for long runs
-- Tool-level caching
-
-### Cross-Orchestrator Communication (Future)
-
-Orchestrators will be able to call each other:
-
-```python
-# UX orchestrator validates API contracts with Architecture orchestrator
-ux_orchestrator.invoke_orchestrator(
-    orchestrator_name="architecture",
-    phase_name="validate_api_contracts",
-    context={"api_spec": api_data}
-)
-```
-
-This enables:
-- UX → Architecture (API contract validation)
-- UX → Testing (E2E test scenario generation)
-- Architecture → DevOps (deployment feasibility)
-- All → Documentation (centralized knowledge base)
-
-### Quick Reference: Orchestrator Commands
-
-```bash
-# Architecture analysis
-python -m orchestrators.architecture_orchestrator
-
-# UX design for specific project
-python -m orchestrators.ux_orchestrator "E-Commerce Platform"
-
-# Programmatic usage
-python -c "
-from orchestrators.ux_orchestrator import UXOrchestrator
-import asyncio
-orchestrator = UXOrchestrator(project_name='My App')
-asyncio.run(orchestrator.run_with_client())
-"
-
-# Check available agents
-python -c "
-from agents.registry import AgentRegistry
-registry = AgentRegistry()
-print(registry.discover_agents())
-"
-```
-
-### Related Files
-
-- `orchestrators/README.md` - Detailed orchestrator documentation
-- `orchestrators/base_orchestrator.py` - Base framework (343 lines)
-- `orchestrators/architecture_orchestrator.py` - Architecture workflow
-- `orchestrators/ux_orchestrator.py` - UX design workflow (6 phases)
-- `agents/registry.py` - Agent discovery and loading
-- `tools/mcp_registry.py` - MCP server discovery
-- `claude-agents-research.md` - Research and design decisions
+- **Timestamped Outputs**: `ra_output/{domain}_{YYYYMMDD_HHMMSS}/`
+- **Portable Design**: Drop into any repository for analysis
+- **Extensible**: Add new domains in <1 day
+- **Cost Tracking**: ~$1-8 per analysis depending on complexity
