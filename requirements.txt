@@ -1,5 +1,0 @@
-# Minimal dependencies for standalone MCP server
-fastmcp>=2.12.3
-neo4j>=5.15.0
-pydantic>=2.6.0
-python-dotenv>=1.0.0
