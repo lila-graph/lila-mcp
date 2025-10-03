@@ -83,7 +83,7 @@ python test_mcp_validation.py
 
 ```bash
 # Import seed data into Neo4j
-python import_data.py --seed-data seed_data.cypher --schema graphs2/lila-graph-schema-v8.json
+python import_data.py --seed-data seed_data.cypher --schema graphs/lila-graph-schema-v8.json
 
 # Export data from Neo4j
 python export_data.py
@@ -134,44 +134,8 @@ fastmcp install mcp-json
 
 ### Graph Schemas
 
-- **`graphs2/lila-graph-schema-v8.json`** - Neo4j graph schema defining PersonaAgent nodes, relationship types, and constraints
-- **Note**: Use `graphs2/` directory for schema files (see Directory Permissions Issue below)
-
-### Directory Permissions Issue
-
-**Problem**: The `graphs/` directory has restrictive permissions and is inaccessible to the host user.
-
-**Root Cause**:
-- The `graphs/` directory is owned by UID:GID 7474:7474 (Neo4j container user)
-- Permissions are 700 (drwx------), making it readable only by the Neo4j container
-- This occurred when Docker Compose mounted Neo4j volumes and the container changed ownership
-
-**Workaround**:
-- Use the `graphs2/` directory instead (owned by host user, permissions 755)
-- `graphs2/` contains a copy of the schema file and is fully accessible
-- Created on Oct 3, 2025 as part of the "initial fastmcp cleanup"
-
-**To Fix Permanently** (if you need to restore `graphs/` access):
-
-```bash
-# Stop Neo4j container first
-docker compose stop neo4j
-
-# Change ownership back to host user
-sudo chown -R $(id -u):$(id -g) /home/donbr/lila-graph/lila-mcp/graphs/
-
-# Fix permissions
-sudo chmod 755 /home/donbr/lila-graph/lila-mcp/graphs/
-
-# Restart Neo4j
-docker compose up -d neo4j
-```
-
-**Why This Happens**:
-- Docker containers run with specific UIDs (Neo4j uses 7474)
-- When containers write to bind mounts, they use their internal UID
-- Host system may not have that UID mapped to a user
-- Results in "UNKNOWN" user ownership on host
+- **`graphs/lila-graph-schema-v8.json`** - Neo4j graph schema defining PersonaAgent nodes, relationship types, and constraints
+- Schema files define node types (PersonaAgent), relationships (KNOWS, INTERACTS_WITH), and constraints
 
 ## Key Architectural Concepts
 
@@ -445,58 +409,6 @@ ps aux | grep -E "fastmcp|mcp-inspector" | grep -v grep
 ss -tulpn | grep -E "6274|6277"
 ```
 
-### Directory Permission Issues
-
-**Problem:** "Permission denied" when accessing `graphs/` directory or reading schema files
-
-**Symptoms:**
-
-```bash
-ls: cannot open directory 'graphs/': Permission denied
-# or
-Permission denied: 'graphs/lila-graph-schema-v8.json'
-```
-
-**Root Cause:** The `graphs/` directory is owned by the Neo4j Docker container user (UID 7474) with restrictive 700 permissions.
-
-**Solutions:**
-
-1. **Use the workaround** (Recommended):
-
-   ```bash
-   # Use graphs2/ directory instead
-   python import_data.py --schema graphs2/lila-graph-schema-v8.json
-   ```
-
-2. **Fix permissions permanently**:
-
-   ```bash
-   # Stop Neo4j first
-   docker compose stop neo4j
-
-   # Fix ownership and permissions
-   sudo chown -R $(id -u):$(id -g) graphs/
-   sudo chmod 755 graphs/
-
-   # Restart Neo4j
-   docker compose up -d neo4j
-   ```
-
-3. **Prevent the issue** (for new deployments):
-
-   ```bash
-   # Before first docker compose up, ensure correct ownership
-   chown -R $(id -u):$(id -g) graphs/
-   chmod 755 graphs/
-   ```
-
-**Understanding Docker UID Mapping:**
-
-- Docker containers run with specific UIDs (Neo4j = 7474)
-- When containers modify bind-mounted directories, they use their internal UID
-- Host may not have that UID, resulting in "UNKNOWN" ownership
-- Use named volumes instead of bind mounts to avoid this, or manage permissions carefully
-
 ### Other Issues
 
 **"Error Connecting to MCP Inspector Proxy"**: Use `simple_lila_mcp_server.py` instead of `lila_mcp_server.py` (this is the default in `fastmcp.json`)
@@ -541,18 +453,14 @@ cat .env | grep NEO4J
 python test_mcp_validation.py
 ```
 
-### Fixing Directory Permissions
+### Verifying Schema Files
 
 ```bash
-# Check current permissions
-ls -la | grep graphs
+# Check schema files exist
+ls -la graphs/
 
-# Fix graphs/ directory ownership (if needed)
-sudo chown -R $(id -u):$(id -g) graphs/
-sudo chmod 755 graphs/
-
-# Or use the graphs2/ workaround
-python import_data.py --schema graphs2/lila-graph-schema-v8.json
+# Verify schema file content
+cat graphs/lila-graph-schema-v8.json | jq . | head -20
 ```
 
 ### Working with Docker Services
