@@ -1,65 +1,66 @@
 # Repository Architecture Documentation
 
+> **Lila MCP** - Multi-domain agent orchestration system with psychological relationship modeling
+
+This repository provides a comprehensive framework for building multi-agent orchestration systems with specialized MCP (Model Context Protocol) servers that expose psychological intelligence services. The system combines AI agent coordination with graph database storage for modeling complex relationship dynamics.
+
+**Last Updated**: 2025-10-03
+**Documentation Version**: 1.0.0
+
+---
+
 ## Overview
 
-**Lila MCP** is a sophisticated multi-domain agent orchestration system that combines psychological relationship modeling with advanced AI agent coordination. The project provides:
+### What is Lila MCP?
 
-- **Psychological Intelligence MCP Servers**: FastMCP-based servers exposing relationship data, psychological analysis tools, and attachment theory prompts through the Model Context Protocol
-- **Multi-Domain Orchestrators**: Framework for coordinating specialized AI agents across different domains (architecture analysis, UX design, etc.)
-- **Tool Integration Layer**: Registry system for managing MCP servers, external tools, and graceful degradation
-- **Neo4j Integration**: Graph database backend for modeling complex psychological relationships and persona interactions
+Lila MCP is a sophisticated multi-domain orchestration platform that combines:
 
-### What Problem Does It Solve?
+1. **MCP Servers**: FastMCP-based servers providing psychological relationship data and tools with Neo4j backend integration
+2. **Agent Orchestration Framework**: Extensible base framework for coordinating multi-phase AI workflows across different domains
+3. **Psychological Intelligence**: Graph-based modeling of personas, relationships, attachment styles, and emotional dynamics
+4. **Tool Integration**: Unified registry system for MCP servers and external design tools (Figma, v0)
 
-1. **Complex Workflow Orchestration**: Coordinates multiple AI agents across sequential phases with cost tracking, output verification, and error recovery
-2. **Psychological Relationship Modeling**: Provides data structures and tools for modeling attachment styles, trust metrics, and relationship dynamics
-3. **Extensible Agent Framework**: Base classes and patterns for creating domain-specific orchestrators with minimal boilerplate
-4. **Tool Availability Management**: Graceful degradation when optional tools are unavailable, with fallback options and setup guidance
+### Core Capabilities
 
-### Who Is It For?
-
-- **AI Researchers**: Exploring multi-agent orchestration and psychological modeling
-- **Software Architects**: Building complex agentic workflows with tool integration
-- **UX/Product Teams**: Leveraging AI agents for comprehensive design workflows
-- **Developers**: Creating custom orchestrators for specific domains or use cases
+- **Relationship Modeling**: Track trust, intimacy, and attachment dynamics between personas using attachment theory
+- **Multi-Domain Orchestration**: Architecture analysis, UX design workflows, and extensible framework for custom domains
+- **AI Agent Coordination**: Phase-based workflows with cost tracking, progress monitoring, and output verification
+- **Graph Database Integration**: Neo4j-backed storage with import/export utilities for psychological data
+- **Development Flexibility**: Mock data server for testing without database dependencies
 
 ---
 
 ## Quick Start
 
-### Understanding the Documentation
+### For New Users
 
-This documentation is organized into four main areas:
+**Want to understand the system?**
+1. Start with [Architecture Summary](#architecture-summary) below for high-level view
+2. Review [Component Overview](#component-overview) for what each piece does
+3. Check [Key Concepts](#key-concepts) for important architectural patterns
 
-1. **[Component Inventory](docs/01_component_inventory.md)** - Complete catalog of all classes, methods, and entry points
-2. **[Architecture Diagrams](diagrams/02_architecture_diagrams.md)** - Visual system architecture, dependencies, and data flows
-3. **[Data Flows](docs/03_data_flows.md)** - Detailed sequence diagrams showing how information moves through the system
-4. **[API Reference](docs/04_api_reference.md)** - Complete API documentation with examples and best practices
+**Want to use the MCP servers?**
+1. See [Development Guide](#development-guide) for setup instructions
+2. Review [API Quick Reference](#api-quick-reference) for available endpoints
+3. Check the full [API Reference](docs/04_api_reference.md) for detailed documentation
 
-### Recommended Reading Order
+**Want to build orchestrators?**
+1. Read [Development Guide](#development-guide) section on custom orchestrators
+2. Study examples in [Component Overview](#component-overview)
+3. See [Data Flows](docs/03_data_flows.md) for interaction patterns
 
-**For New Developers:**
-1. Start with this README for high-level understanding
-2. Review [Architecture Diagrams](diagrams/02_architecture_diagrams.md) for visual system overview
-3. Read [Component Inventory](docs/01_component_inventory.md) to understand available components
-4. Consult [API Reference](docs/04_api_reference.md) when implementing
+### Documentation Navigation
 
-**For System Architects:**
-1. Begin with [Architecture Diagrams](diagrams/02_architecture_diagrams.md) for design patterns
-2. Study [Data Flows](docs/03_data_flows.md) for interaction patterns
-3. Reference [Component Inventory](docs/01_component_inventory.md) for extension points
-
-**For Integration Developers:**
-1. Jump to [API Reference](docs/04_api_reference.md) for implementation details
-2. Check [Data Flows](docs/03_data_flows.md) for integration patterns
-3. Use [Component Inventory](docs/01_component_inventory.md) as reference
-
-### How to Navigate
-
-- All documentation includes source file references with line numbers
-- Cross-references link between documents for deep dives
-- Code examples are complete and runnable
-- Diagrams use Mermaid for interactive visualization
+```
+repo_analysis/
+├── README.md (you are here) ─────┐
+├── docs/                          │
+│   ├── 01_component_inventory.md ← Complete component catalog
+│   ├── 03_data_flows.md ──────── ← Sequence diagrams and flows
+│   └── 04_api_reference.md ───── ← Full API documentation
+└── diagrams/
+    └── 02_architecture_diagrams.md ← Visual architecture
+```
 
 ---
 
@@ -67,561 +68,898 @@ This documentation is organized into four main areas:
 
 ### Layered Architecture
 
-The system follows a **6-layer architecture** with clear separation of concerns:
+The system follows a clean **6-layer architecture** with clear separation of concerns:
 
+```mermaid
+graph TB
+    subgraph "1. Presentation Layer"
+        CLI[CLI Entry Points]
+        HTTP[HTTP Endpoints]
+    end
+
+    subgraph "2. Orchestration Layer"
+        BaseOrch[BaseOrchestrator]
+        DomainOrch[Domain Orchestrators]
+    end
+
+    subgraph "3. Agent Management"
+        AgentReg[AgentRegistry]
+        AgentDef[Agent Definitions]
+    end
+
+    subgraph "4. Tool Integration"
+        MCPReg[MCP Registry]
+        SDKTools[Claude SDK Tools]
+    end
+
+    subgraph "5. MCP Services"
+        LilaMCP[MCP Servers]
+        Resources[Resources & Tools]
+    end
+
+    subgraph "6. Data Layer"
+        Neo4j[(Neo4j Graph DB)]
+        MockData[Mock Data]
+    end
+
+    CLI --> DomainOrch
+    DomainOrch --> BaseOrch
+    BaseOrch --> AgentReg
+    BaseOrch --> MCPReg
+    DomainOrch --> SDKTools
+    LilaMCP --> Neo4j
+    LilaMCP --> MockData
+
+    style BaseOrch fill:#e1f5ff,stroke:#01579b
+    style LilaMCP fill:#fff3e0,stroke:#e65100
+    style Neo4j fill:#f3e5f5,stroke:#4a148c
 ```
-┌─────────────────────────────────────────┐
-│     Presentation Layer                  │
-│     - CLI Entry Points                  │
-│     - HTTP Health Checks                │
-└─────────────────────────────────────────┘
-┌─────────────────────────────────────────┐
-│     Orchestration Layer                 │
-│     - BaseOrchestrator (abstract)       │
-│     - Domain Orchestrators              │
-│     - CrossOrchestrator Communication   │
-└─────────────────────────────────────────┘
-┌─────────────────────────────────────────┐
-│     Agent Management Layer              │
-│     - AgentRegistry                     │
-│     - Agent Definitions (JSON)          │
-└─────────────────────────────────────────┘
-┌─────────────────────────────────────────┐
-│     Tool Integration Layer              │
-│     - MCPRegistry                       │
-│     - FigmaIntegration                  │
-│     - SDK Tools (Read, Write, etc.)     │
-└─────────────────────────────────────────┘
-┌─────────────────────────────────────────┐
-│     MCP Server Layer                    │
-│     - LilaMCPServer (Neo4j)             │
-│     - SimpleLilaMCPServer (Mock)        │
-└─────────────────────────────────────────┘
-┌─────────────────────────────────────────┐
-│     Data Layer                          │
-│     - Neo4j Database                    │
-│     - Import/Export Tools               │
-└─────────────────────────────────────────┘
-```
 
-### Key Design Patterns
+### Key Architectural Principles
 
-1. **Abstract Base Class Pattern**: `BaseOrchestrator` defines common workflow, subclasses implement domain logic
-2. **Registry Pattern**: Centralized discovery and management (`AgentRegistry`, `MCPRegistry`)
-3. **Template Method Pattern**: Orchestrators follow predefined execution flow with customizable phases
-4. **Facade Pattern**: `SimpleLilaMCPServer` provides same interface as `LilaMCPServer` with mock data
-5. **Mixin Pattern**: `CrossOrchestratorCommunication` adds optional cross-domain capabilities
-6. **Strategy Pattern**: Multiple orchestrators implement different domain strategies with same base interface
-7. **Dependency Injection**: Clients and options injected rather than constructed internally
+1. **Modularity**: Each layer has focused responsibilities; components can be developed independently
+2. **Extensibility**: New orchestrators extend `BaseOrchestrator`; new MCP servers follow FastMCP patterns
+3. **Testability**: Mock data layer (`SimpleLilaMCPServer`) allows testing without database dependencies
+4. **Scalability**: Stateless orchestrators can run in parallel; Neo4j provides horizontal scaling
+5. **Composability**: Agents are composed into orchestrators; tools are composed into agents
 
-### Design Principles
+### Design Patterns in Use
 
-- **Modularity**: Each layer has specific responsibilities with minimal coupling
-- **Extensibility**: New orchestrators extend `BaseOrchestrator`; new agents added via JSON
-- **Testability**: Mock implementations (`SimpleLilaMCPServer`) support testing without dependencies
-- **Graceful Degradation**: Fallback options when tools unavailable
-- **Observable Workflows**: Real-time progress display and cost tracking
-- **Single Responsibility**: Each class has focused, well-defined purpose
-- **Open/Closed**: System open for extension, closed for modification
+The system demonstrates several proven architectural patterns:
+
+- **Abstract Base Class**: `BaseOrchestrator` enforces consistent interface across domains
+- **Template Method**: `run_with_client()` provides workflow template with customizable phases
+- **Registry Pattern**: `AgentRegistry` and `MCPRegistry` centralize component discovery
+- **Strategy Pattern**: Different orchestrators implement different domain strategies
+- **Facade Pattern**: `SimpleLilaMCPServer` provides same interface as `LilaMCPServer` with mock data
+- **Mixin Pattern**: `CrossOrchestratorCommunication` adds cross-domain capabilities
+
+See [Architecture Diagrams](diagrams/02_architecture_diagrams.md) for detailed class hierarchies and relationships.
 
 ---
 
 ## Component Overview
 
-### MCP Servers
+### MCP Servers (Psychological Intelligence Services)
 
-#### 1. **LilaMCPServer** ([Source](../lila_mcp_server.py))
-Production MCP server with comprehensive Neo4j integration:
-- **Resources**: Personas, relationships, interactions (Neo4j-backed)
-- **Tools**: Update metrics, record interactions, analyze compatibility
-- **Prompts**: Attachment style assessment, emotional climate analysis
-- **Health Check**: HTTP endpoint for container orchestration
-- **Use Case**: Production deployment with graph database
+#### LilaMCPServer
+**File**: `/home/donbr/lila-graph/lila-mcp/lila_mcp_server.py`
 
-#### 2. **SimpleLilaMCPServer** ([Source](../simple_lila_mcp_server.py))
-Development/testing server with mock data fallback:
-- **Resources**: Same interface as LilaMCPServer + additional mock resources
-- **Tools**: Full psychological analysis toolkit with in-memory state
-- **Prompts**: Attachment theory frameworks for LLM consumption
-- **Use Case**: Development, testing, demos without database
+Production MCP server exposing psychological relationship data and tools with Neo4j backend.
 
-### Orchestrators
+**Resources** (read-only data endpoints):
+- `neo4j://personas/all` - All personas with psychological profiles
+- `neo4j://personas/{id}` - Specific persona details
+- `neo4j://relationships/all` - All relationship metrics
+- `neo4j://relationships/{p1}/{p2}` - Specific relationship data
+- `neo4j://interactions/recent/{count}` - Recent interaction history
 
-#### 1. **BaseOrchestrator** ([Source](../orchestrators/base_orchestrator.py))
-Abstract base providing orchestrator framework:
+**Tools** (action endpoints - async):
+- `update_relationship_metrics()` - Update trust/intimacy/strength (0-10 scale)
+- `record_interaction()` - Record interaction with psychological analysis
+- `analyze_persona_compatibility()` - Assess relationship potential based on attachment styles
+- `autonomous_strategy_selection()` - AI-driven strategy selection using attachment theory
+- `assess_goal_progress()` - Evaluate progress toward relationship goals
+- `generate_contextual_response()` - Generate psychologically authentic responses
+
+**Prompts** (AI templates):
+- `assess_attachment_style()` - Determine attachment style from behavioral observations
+- `analyze_emotional_climate()` - Evaluate conversation emotional dynamics
+- `generate_secure_response()` - Create attachment-security-building responses
+
+**Use Cases**: Production psychological intelligence services, relationship coaching applications, AI persona simulation
+
+#### SimpleLilaMCPServer
+**File**: `/home/donbr/lila-graph/lila-mcp/simple_lila_mcp_server.py`
+
+Development MCP server with in-memory mock data. Same interface as `LilaMCPServer` but no Neo4j required.
+
+**Additional Resources**:
+- `neo4j://emotional_climate/current` - Computed emotional safety metrics
+- `neo4j://attachment_styles/analysis` - Attachment compatibility analysis
+- `neo4j://goals/active` - Active relationship goals
+- `neo4j://psychological_insights/trends` - Psychological trends
+
+**Use Cases**: Testing, development, CI/CD pipelines, demos without database setup
+
+### Orchestrator Framework (Multi-Phase Workflows)
+
+#### BaseOrchestrator
+**File**: `/home/donbr/lila-graph/lila-mcp/orchestrators/base_orchestrator.py`
+
+Abstract base class providing common orchestrator functionality:
+
+**Core Features**:
 - Phase execution and management
-- Agent lifecycle coordination
-- Progress tracking with real-time display
-- Cost tracking and reporting
+- Agent lifecycle management
+- Output directory structure creation
+- Progress tracking with visual headers
+- Cost tracking per phase and total
 - Output verification and checkpointing
 - Error handling and recovery
+- Message streaming and display
+
+**Abstract Methods** (must implement):
+- `get_agent_definitions()` - Return agent configs
+- `get_allowed_tools()` - Return tool allowlist
+- `run()` - Execute workflow phases
+
+**Use Cases**: Base class for all domain-specific orchestrators
+
+#### ArchitectureOrchestrator
+**File**: `/home/donbr/lila-graph/lila-mcp/orchestrators/architecture_orchestrator.py`
+
+Orchestrator for comprehensive repository architecture analysis.
+
+**Workflow Phases**:
+1. **Component Inventory** - Catalog all modules, classes, functions
+2. **Architecture Diagrams** - Generate Mermaid visualizations
+3. **Data Flows** - Document sequence diagrams and message flows
+4. **API Documentation** - Generate comprehensive API reference
+5. **Final Synthesis** - Create overview README
+
+**Agents**:
+- `analyzer` - Code structure analysis (Read, Grep, Glob, Write, Bash)
+- `doc-writer` - Technical documentation (Read, Write, Grep, Glob)
+
+**Use Cases**: Repository documentation, architecture analysis, onboarding new developers
+
+#### UXOrchestrator
+**File**: `/home/donbr/lila-graph/lila-mcp/orchestrators/ux_orchestrator.py`
+
+Orchestrator for comprehensive UX/UI design workflow.
+
+**Workflow Phases** (6-phase design process):
+1. **UX Research** - User research, personas, journeys
+2. **Information Architecture** - Sitemaps, navigation, content structure
+3. **Visual Design** - High-fidelity mockups and design specs
+4. **Interactive Prototyping** - Working prototypes and interactions
+5. **API Contract Design** - Frontend-backend interface specs
+6. **Design System Documentation** - Component library and style guide
+
+**Agents**:
+- `ux-researcher` - User research (Read, Write, Grep, Glob, WebSearch)
+- `ia-architect` - Information architecture (Read, Write, Grep, Glob)
+- `ui-designer` - Visual design (Read, Write, Grep, Glob + Figma MCP)
+- `prototype-developer` - Interactive prototypes (Read, Write, Grep, Glob, Bash)
+
+**Use Cases**: UX design workflows, product development, design system creation
+
+### Registry Systems (Component Discovery)
+
+#### AgentRegistry
+**File**: `/home/donbr/lila-graph/lila-mcp/agents/registry.py`
+
+Registry for discovering and loading agent definitions from JSON files.
 
 **Key Methods**:
-- `execute_phase()` - Run single workflow phase
-- `run_with_client()` - Main execution with automatic setup/teardown
-- `verify_outputs()` - Validate phase results
-- `display_summary()` - Show cost and completion status
+- `discover_agents(domain)` - Find all agent definition files
+- `load_agent(name, domain)` - Load specific agent with caching
+- `load_domain_agents(domain)` - Load all agents for a domain
 
-#### 2. **ArchitectureOrchestrator** ([Source](../orchestrators/architecture_orchestrator.py))
-Comprehensive repository analysis workflow:
-- **Phase 1**: Component inventory (all classes, methods, entry points)
-- **Phase 2**: Architecture diagrams (system, class, dependency views)
-- **Phase 3**: Data flow analysis (sequence diagrams, interaction patterns)
-- **Phase 4**: API documentation (complete reference with examples)
-- **Phase 5**: Synthesis (integrated README)
-- **Agents**: Analyzer (code analysis), Doc-Writer (documentation)
-- **Output**: `repo_analysis/` directory structure
-
-#### 3. **UXOrchestrator** ([Source](../orchestrators/ux_orchestrator.py))
-End-to-end UX/UI design workflow:
-- **Phase 1**: UX research (personas, journeys, competitive analysis)
-- **Phase 2**: Information architecture (sitemaps, wireframes)
-- **Phase 3**: Visual design (mockups, design system)
-- **Phase 4**: Interactive prototyping (flows, animations)
-- **Phase 5**: API contract design (data models, endpoints)
-- **Phase 6**: Design system documentation (component library)
-- **Agents**: UX Researcher, IA Architect, UI Designer, Prototype Developer
-- **Output**: `outputs/ux_design/` directory structure
-
-### Tool Integration
-
-#### **MCPRegistry** ([Source](../tools/mcp_registry.py))
-Manages MCP server discovery and availability:
-- Auto-discovers: Figma, V0, Sequential-Thinking, Playwright servers
-- Validates tool availability across servers
-- Provides fallback options when tools unavailable
-- Returns configuration requirements and setup instructions
-- **Use Case**: Check tool availability before orchestrator execution
-
-#### **FigmaIntegration** ([Source](../tools/figma_integration.py))
-Wrapper for Figma MCP and REST API:
-- Get design context from Figma files
-- Export components to code (React, Vue, etc.)
-- Create components from specifications
-- Provide setup instructions when unavailable
-- **Use Case**: Bridge between design tools and orchestrators
-
-### Data Management
-
-#### **Neo4jDataImporter** ([Source](../import_data.py))
-Import psychological intelligence data:
-- Loads schema constraints and indexes
-- Imports persona and relationship data
-- Maps behavioral styles to Big Five traits
-- Retry logic for container startup
-- Verification and default persona creation
-- **CLI**: `python import_data.py --schema graphs/lila-graph-schema-v8.json`
-
-#### **Neo4jDataExporter** ([Source](../export_data.py))
-Export data for seeding/backup:
-- Exports personas, relationships, memories, goals
-- Generates Cypher import scripts
-- Preserves psychological profiles and metrics
-- **CLI**: `python export_data.py --output seed_data.cypher`
-
-### Entry Points
-
-**MCP Servers**:
-```bash
-# Full server with Neo4j
-python lila_mcp_server.py
-
-# Simple server with mock data
-fastmcp dev simple_lila_mcp_server.py
+**Directory Structure**:
+```
+agents/
+├── ux/
+│   ├── ux_researcher.json
+│   ├── ia_architect.json
+│   └── ui_designer.json
+└── architecture/
+    ├── analyzer.json
+    └── doc_writer.json
 ```
 
-**Orchestrators**:
-```bash
-# Architecture analysis
-python -m orchestrators.architecture_orchestrator
+**Use Cases**: Dynamic agent loading, domain-specific agent management, caching for performance
 
-# UX design workflow
-python -m orchestrators.ux_orchestrator "My Project"
-```
+#### MCPRegistry
+**File**: `/home/donbr/lila-graph/lila-mcp/tools/mcp_registry.py`
 
-**Data Management**:
-```bash
-# Import data
-python import_data.py --schema graphs/lila-graph-schema-v8.json --create-defaults
+Registry for discovering and managing MCP server connections.
 
-# Export data
-python export_data.py --output seed_data.cypher
-```
+**Registered Servers**:
+- `figma` - Figma MCP Server for design context (requires `FIGMA_ACCESS_TOKEN`)
+- `v0` - Vercel v0 MCP Server for UI generation (requires `V0_API_KEY`)
+- `sequential-thinking` - Advanced reasoning MCP tool
+- `playwright` - Browser automation MCP tool
 
-**Testing**:
-```bash
-# Validate all components
-python test_orchestrators.py
-```
+**Key Methods**:
+- `is_server_available(name)` - Check server availability
+- `get_server_tools(name)` - Get tool list for server
+- `validate_tool_availability(tool)` - Validate specific tool
+- `get_configuration_requirements(name)` - Get setup instructions
+- `get_fallback_options(tool)` - Get alternatives for unavailable tools
+
+**Use Cases**: MCP server management, tool validation, fallback handling
+
+### Data Management (Neo4j Import/Export)
+
+#### Neo4jDataImporter
+**File**: `/home/donbr/lila-graph/lila-mcp/import_data.py`
+
+Imports psychological intelligence data and schema into Neo4j.
+
+**Key Methods**:
+- `load_schema(path)` - Create constraints, indexes, and load persona data
+- `import_seed_data(path)` - Import Cypher seed data file
+- `create_default_personas()` - Create default Lila and Alex personas
+- `verify_import()` - Verify data was imported successfully
+
+**Creates**:
+- Constraints on `persona_id`, `name`, `memory_id`, `goal_id`
+- Indexes on `attachment_style`, `memory_type`, `goal_type`, `relationship_type`
+- PersonaAgent nodes with Big Five personality traits
+- RELATIONSHIP edges with trust/intimacy/strength metrics
+
+**Use Cases**: Database initialization, schema management, default data creation
+
+#### Neo4jDataExporter
+**File**: `/home/donbr/lila-graph/lila-mcp/export_data.py`
+
+Exports psychological intelligence data from Neo4j for seeding.
+
+**Key Methods**:
+- `export_personas()` - Export all PersonaAgent nodes
+- `export_relationships()` - Export all relationship edges
+- `export_memories()` - Export memory nodes
+- `export_goals()` - Export goal nodes
+- `generate_cypher_script()` - Generate import script from exported data
+
+**Use Cases**: Backup, migration, seed data generation, testing data
 
 ---
 
 ## Data Flows
 
-### Key Flow Patterns
+### Orchestrator Workflow Pattern
 
-#### 1. **Orchestrator Execution Flow**
-```
-User → Orchestrator.run_with_client()
-  → Create ClaudeAgentOptions (agents, tools, permission mode)
-  → Open ClaudeSDKClient context
-  → For each phase:
-      → execute_phase(phase_name, agent_name, prompt)
-      → Agent processes with tools (Read, Write, Grep, etc.)
-      → Track cost, mark complete
-  → Verify outputs
-  → Display summary
+The standard orchestrator workflow follows a consistent pattern across all domains:
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Orchestrator
+    participant BaseOrchestrator
+    participant ClaudeSDKClient
+    participant Agent
+    participant Tools
+
+    User->>Orchestrator: run_with_client()
+    Orchestrator->>BaseOrchestrator: create_client_options()
+    BaseOrchestrator->>AgentRegistry: load agents
+    BaseOrchestrator->>MCPRegistry: validate tools
+
+    Orchestrator->>ClaudeSDKClient: create client context
+
+    loop For each phase
+        Orchestrator->>BaseOrchestrator: execute_phase()
+        BaseOrchestrator->>ClaudeSDKClient: query(prompt)
+        ClaudeSDKClient->>Agent: process with tools
+
+        loop Agent execution
+            Agent->>Tools: Read/Write/Grep/Glob/Bash
+            Tools-->>Agent: results
+        end
+
+        Agent-->>ClaudeSDKClient: completion
+        ClaudeSDKClient-->>BaseOrchestrator: ResultMessage (cost)
+        BaseOrchestrator->>BaseOrchestrator: track_phase_cost()
+        BaseOrchestrator->>BaseOrchestrator: mark_phase_complete()
+    end
+
+    Orchestrator->>BaseOrchestrator: verify_outputs()
+    BaseOrchestrator->>BaseOrchestrator: display_summary()
 ```
 
 **Key Characteristics**:
-- Single client session across all phases (context maintained)
-- Streaming message display (AssistantMessage → UserMessage → ResultMessage)
-- Real-time cost tracking per phase
-- Output verification before completion
+- **Session Continuity**: Single `ClaudeSDKClient` instance persists across all phases
+- **Incremental Output**: Each phase writes to specific files that later phases can read
+- **Cost Tracking**: Every phase tracks `total_cost_usd` and aggregates at orchestrator level
+- **Error Resilience**: Try-catch wraps critical sections with graceful degradation
 
-#### 2. **MCP Resource Request Flow**
-```
-Client → MCP Server (HTTP/SSE)
-  → FastMCP routes to resource handler
-  → Resource handler queries Neo4j
-  → Transform to JSON
-  → Return to client
-```
+### MCP Server Request Flow
 
-**Resource Types**:
-- **Static**: Personas, relationships, interactions (direct Neo4j queries)
-- **Dynamic**: Emotional climate, psychological trends (computed from data)
+MCP servers handle three types of requests:
 
-#### 3. **Tool Execution Flow**
-```
-Agent decides to use tool → ToolUseBlock
-  → Check permission mode
-  → If "acceptEdits": Auto-approve Read/Write/Grep/Glob
-  → If "ask" or destructive: Request user approval
-  → Execute tool → ToolResultBlock
-  → Return to agent
-```
+```mermaid
+sequenceDiagram
+    participant Client
+    participant LilaMCPServer
+    participant FastMCP
+    participant Neo4j
 
-**Permission Modes**:
-- `acceptEdits` (default): Auto-approve safe operations, ask for destructive
-- `ask`: Require approval for every tool use
+    alt Resource Request
+        Client->>LilaMCPServer: GET neo4j://personas/all
+        LilaMCPServer->>FastMCP: route to @app.resource
+        FastMCP->>Neo4j: MATCH (p:PersonaAgent) RETURN ...
+        Neo4j-->>FastMCP: query results
+        FastMCP-->>Client: JSON response
 
-#### 4. **Cross-Orchestrator Communication**
-```
-UXOrchestrator needs validation
-  → invoke_orchestrator("architecture", "validate_design", context)
-  → Architecture agent processes with context
-  → Return validation results
-  → UX continues with validated design
+    else Tool Request
+        Client->>LilaMCPServer: CALL update_relationship_metrics(...)
+        LilaMCPServer->>FastMCP: route to @app.tool
+        FastMCP->>Neo4j: UPDATE relationship metrics
+        Neo4j-->>FastMCP: confirmation
+        FastMCP-->>Client: JSON response
+
+    else Prompt Request
+        Client->>LilaMCPServer: GET prompt assess_attachment_style
+        LilaMCPServer->>FastMCP: route to @app.prompt
+        FastMCP-->>Client: prompt template
+    end
 ```
 
-See [Data Flows Documentation](docs/03_data_flows.md) for detailed sequence diagrams.
+**Flow Types**:
+1. **Resources**: Read-only data queries returning JSON
+2. **Tools**: Async operations that modify data or perform analysis
+3. **Prompts**: Template generation for LLM consumption
+
+See [Data Flow Analysis](docs/03_data_flows.md) for comprehensive sequence diagrams including:
+- Interactive client session flow
+- Tool permission callback flow
+- Message parsing and routing
+- Agent registry loading flow
 
 ---
 
-## API Highlights
+## API Quick Reference
 
-### Starting an MCP Server
+### MCP Server Endpoints
+
+#### Resources (Data Access)
 
 ```python
+# Get all personas
+personas = await client.get_resource("neo4j://personas/all")
+
+# Get specific persona
+persona = await client.get_resource("neo4j://personas/lila")
+
+# Get all relationships
+relationships = await client.get_resource("neo4j://relationships/all")
+
+# Get recent interactions
+interactions = await client.get_resource("neo4j://interactions/recent/10")
+```
+
+#### Tools (Actions)
+
+```python
+# Update relationship metrics
+result = await update_relationship_metrics(
+    persona1_id="lila",
+    persona2_id="don",
+    trust_delta=0.5,
+    intimacy_delta=0.3,
+    strength_delta=0.4
+)
+
+# Record interaction
+result = await record_interaction(
+    sender_id="lila",
+    recipient_id="don",
+    content="Had a great conversation about AI ethics",
+    emotional_valence=0.8,
+    relationship_impact=0.3
+)
+
+# Analyze compatibility
+result = await analyze_persona_compatibility(
+    persona1_id="lila",
+    persona2_id="don",
+    relationship_type="professional"
+)
+```
+
+#### Prompts (AI Templates)
+
+```python
+# Get attachment style assessment prompt
+prompt = assess_attachment_style(
+    persona_id="don",
+    observation_period="past_month",
+    behavioral_examples="Shows consistent engagement..."
+)
+
+# Get emotional climate analysis prompt
+prompt = analyze_emotional_climate(
+    conversation_text="[conversation content]",
+    participants="lila,don"
+)
+```
+
+### Orchestrator API
+
+#### Running an Orchestrator
+
+```python
+from orchestrators.architecture_orchestrator import ArchitectureOrchestrator
 import asyncio
-from lila_mcp_server import LilaMCPServer
 
 async def main():
-    server = LilaMCPServer()
-    try:
-        await server.run_server(host="0.0.0.0", port=8765)
-    finally:
-        server.close()
+    orchestrator = ArchitectureOrchestrator()
+    await orchestrator.run_with_client()
 
 asyncio.run(main())
 ```
 
-### Running an Orchestrator
+#### Creating a Custom Orchestrator
 
 ```python
-import asyncio
-from orchestrators.architecture_orchestrator import ArchitectureOrchestrator
+from orchestrators.base_orchestrator import BaseOrchestrator
+from claude_agent_sdk import AgentDefinition
+from pathlib import Path
 
-async def analyze():
-    orchestrator = ArchitectureOrchestrator(
-        output_base_dir=Path("repo_analysis"),
-        show_tool_details=True
-    )
-    success = await orchestrator.run_with_client()
-    return success
+class CustomOrchestrator(BaseOrchestrator):
+    def __init__(self):
+        super().__init__(domain_name="custom")
+        self.docs_dir = self.output_dir / "docs"
+        self.create_output_structure()
 
-asyncio.run(analyze())
+    def get_agent_definitions(self):
+        return {
+            "analyzer": AgentDefinition(
+                description="Custom analyzer",
+                prompt="You are a custom analyzer...",
+                tools=["Read", "Write", "Grep"],
+                model="sonnet"
+            )
+        }
+
+    def get_allowed_tools(self):
+        return ["Read", "Write", "Grep", "Glob"]
+
+    async def run(self):
+        await self.execute_phase(
+            phase_name="Analysis",
+            agent_name="analyzer",
+            prompt="Analyze the system...",
+            client=self.client
+        )
 ```
 
-### Integrating Tools
+### Registry API
+
+#### Agent Registry
+
+```python
+from agents.registry import AgentRegistry
+
+registry = AgentRegistry()
+
+# Discover all agents
+agents = registry.discover_agents()
+
+# Load specific agent
+agent = registry.load_agent('ux_researcher', domain='ux')
+
+# Load all agents for domain
+ux_agents = registry.load_domain_agents('ux')
+```
+
+#### MCP Registry
 
 ```python
 from tools.mcp_registry import MCPRegistry
 
-registry = MCPRegistry()
+mcp = MCPRegistry()
 
-if registry.is_server_available("figma"):
-    tools = registry.get_server_tools("figma")
-    print(f"Figma tools: {tools}")
+# Check server availability
+if mcp.is_server_available('figma'):
+    tools = mcp.get_server_tools('figma')
 else:
-    fallbacks = registry.get_fallback_options("figma_get_file")
-    config = registry.get_configuration_requirements("figma")
-    print(f"Setup: {config['setup_instructions']}")
+    config = mcp.get_configuration_requirements('figma')
+    fallbacks = mcp.get_fallback_options('figma_get_file')
 ```
 
-### Importing/Exporting Data
-
-```python
-from import_data import Neo4jDataImporter
-from pathlib import Path
-
-# Import
-importer = Neo4jDataImporter(
-    uri="bolt://localhost:7687",
-    user="neo4j",
-    password="passw0rd"
-)
-importer.load_schema(Path("graphs/lila-graph-schema-v8.json"))
-importer.verify_import()
-importer.close()
-
-# Export
-from export_data import Neo4jDataExporter
-
-exporter = Neo4jDataExporter(uri="bolt://localhost:7687", user="neo4j", password="passw0rd")
-personas = exporter.export_personas()
-relationships = exporter.export_relationships()
-script = exporter.generate_cypher_script(personas, relationships, [], [])
-Path("seed_data.cypher").write_text(script)
-exporter.close()
-```
-
-See [API Reference](docs/04_api_reference.md) for complete documentation with 52+ methods and 25+ examples.
+For complete API documentation with all parameters, return types, and examples, see [API Reference](docs/04_api_reference.md).
 
 ---
 
-## Configuration
+## Key Concepts
 
-### Environment Variables
+### 1. Orchestrators and Phases
 
-**Neo4j Connection** (required for production MCP server):
-```bash
-export NEO4J_URI="bolt://localhost:7687"
-export NEO4J_USER="neo4j"
-export NEO4J_PASSWORD="passw0rd"
+**Orchestrators** coordinate multi-phase workflows with specific agents and tools. Each phase:
+- Executes with a specific agent and prompt
+- Writes outputs to designated directories
+- Tracks API costs
+- Marks completion for progress tracking
+
+**Example**: ArchitectureOrchestrator runs 5 phases sequentially:
+1. Component Inventory → `docs/01_component_inventory.md`
+2. Architecture Diagrams → `diagrams/02_architecture_diagrams.md`
+3. Data Flows → `docs/03_data_flows.md`
+4. API Documentation → `docs/04_api_reference.md`
+5. Final Synthesis → `README.md`
+
+### 2. Agents and Tools
+
+**Agents** are AI workers with specific capabilities defined by:
+- **Description**: What the agent does
+- **Prompt**: System prompt defining behavior and expertise
+- **Tools**: Allowed tool list (Read, Write, Grep, Glob, Bash, WebSearch)
+- **Model**: Which Claude model to use (sonnet, opus, haiku)
+
+**Tools** are actions agents can perform:
+- **Read**: Read files from filesystem
+- **Write**: Write files to filesystem
+- **Grep**: Search file contents with regex
+- **Glob**: Find files by pattern
+- **Bash**: Execute shell commands (requires permission)
+- **WebSearch**: Search the web (when available)
+
+### 3. MCP Resources, Tools, and Prompts
+
+MCP servers expose three types of endpoints:
+
+**Resources** (read-only data):
+- URI-based access: `neo4j://personas/all`
+- Return JSON data
+- No side effects
+
+**Tools** (async actions):
+- Function calls with parameters
+- Can modify data
+- Return JSON results
+- May have side effects
+
+**Prompts** (AI templates):
+- Return formatted prompt strings
+- Used by LLMs for consistent analysis
+- Include instructions and examples
+
+### 4. Psychological Intelligence Model
+
+The system models psychological relationships using:
+
+**Personas** (PersonaAgent nodes):
+- **Big Five Personality Traits**: Openness, Conscientiousness, Extraversion, Agreeableness, Neuroticism (0-1 scale)
+- **Attachment Style**: Secure, Anxious, Avoidant, Exploratory
+- **Demographics**: Age, role, description
+- **Communication Style**: How persona interacts
+
+**Relationships** (RELATIONSHIP edges):
+- **Trust Level**: 0-10 scale
+- **Intimacy Level**: 0-10 scale
+- **Relationship Strength**: 0-10 scale
+- **Interaction Count**: Number of interactions
+- **Emotional Valence**: Overall emotional tone
+
+**Attachment Theory Framework**:
+- **Secure**: Comfortable with intimacy and autonomy
+- **Anxious**: Seeks closeness, fears abandonment
+- **Avoidant**: Values independence over closeness
+- **Exploratory**: Seeks authentic expression and growth
+
+### 5. Permission Modes
+
+Orchestrators use permission modes to control tool usage:
+
+**"acceptEdits" (Default)**:
+- Auto-approves: Read, Write, Grep, Glob (safe file operations)
+- Prompts for: Bash commands (especially destructive operations)
+- Best for: Production workflows with monitoring
+
+**"ask"**:
+- Requires approval for every tool use
+- Best for: Debugging, learning, high-security environments
+
+### 6. Message Types and Streaming
+
+The Claude SDK uses three message types:
+
+**AssistantMessage**:
+- Agent thinking and tool requests
+- Contains TextBlock (thoughts) and ToolUseBlock (tool requests)
+- Displayed as "🤖 Agent: ..."
+
+**UserMessage**:
+- Tool execution results back to agent
+- Contains ToolResultBlock with tool output
+- Displayed as "✅ Result: ..."
+
+**ResultMessage**:
+- Phase completion and cost tracking
+- Contains total_cost_usd and status
+- Displayed as completion banner with cost
+
+Messages stream asynchronously via `async for msg in client.receive_response()`.
+
+### 7. Registry Pattern for Discovery
+
+Both AgentRegistry and MCPRegistry use the **Registry Pattern**:
+
+**Benefits**:
+- Centralized component discovery
+- Caching to avoid re-loading
+- Dynamic configuration without code changes
+- Graceful handling of missing components
+
+**Agent Discovery**:
+```
+agents/
+├── ux/
+│   └── ux_researcher.json  ← Discovered
+└── architecture/
+    └── analyzer.json       ← Discovered
 ```
 
-**Figma Integration** (optional):
-```bash
-export FIGMA_ACCESS_TOKEN="figd_xxx"
-export FIGMA_FILE_ID="abc123def456"
-```
-
-**Vercel V0** (optional):
-```bash
-export V0_API_KEY="v0_xxx"
-```
-
-### Configuration Files
-
-**.env File** (place in project root):
-```bash
-NEO4J_URI=bolt://localhost:7687
-NEO4J_USER=neo4j
-NEO4J_PASSWORD=passw0rd
-FIGMA_ACCESS_TOKEN=figd_xxx
-```
-
-**MCP Server Configuration** (for Claude Code):
-```json
-{
-  "mcpServers": {
-    "lila-psychological-relationships": {
-      "command": "python",
-      "args": ["-m", "simple_lila_mcp_server"],
-      "env": {
-        "NEO4J_URI": "bolt://localhost:7687",
-        "NEO4J_USER": "neo4j",
-        "NEO4J_PASSWORD": "passw0rd"
-      }
-    }
-  }
-}
-```
+**MCP Discovery**:
+- Checks environment variables for tokens
+- Tests server availability
+- Provides fallback options if unavailable
 
 ---
 
-## Key Design Decisions
-
-### Why Dual MCP Servers?
-
-**LilaMCPServer**: Production deployment with Neo4j
-- Full graph database capabilities
-- Complex relationship queries
-- Persistent psychological state
-- Health check for container orchestration
-
-**SimpleLilaMCPServer**: Development and testing
-- No database dependencies
-- Instant startup with mock data
-- Same interface for drop-in replacement
-- Ideal for CI/CD and demos
-
-**Rationale**: Enables development without infrastructure while maintaining production-ready interface.
-
-### Why Phase-Based Orchestration?
-
-**Sequential Phases** with agent switching:
-- Each phase has specific deliverables
-- Later phases build on earlier outputs
-- Different agents specialized for different tasks
-- Clear progress tracking and cost attribution
-
-**Single Client Session**:
-- Maintains context across phases
-- Agents can reference previous outputs
-- Reduced overhead vs. multiple sessions
-
-**Rationale**: Complex workflows broken into manageable units with clear dependencies and measurable progress.
-
-### Why Registry Pattern for Tools?
-
-**AgentRegistry**:
-- Centralizes agent discovery from JSON files
-- Caching prevents redundant file I/O
-- Domain-based organization
-- Easy to add new agents without code changes
-
-**MCPRegistry**:
-- Auto-discovers available MCP servers
-- Validates tool availability before execution
-- Provides fallback options and setup guidance
-- Decouples orchestrators from tool availability
-
-**Rationale**: Dynamic discovery enables extensibility and graceful degradation without hardcoded dependencies.
-
-### Graceful Degradation Strategy
-
-**Tool Availability Checks**:
-1. Query MCPRegistry for server availability
-2. If unavailable, get configuration requirements
-3. If still unavailable, get fallback options
-4. Proceed with manual alternatives
-
-**Example Flow**:
-```python
-if not registry.is_server_available("figma"):
-    config = registry.get_configuration_requirements("figma")
-    # Show setup instructions
-    fallbacks = registry.get_fallback_options("figma_get_file")
-    # Use markdown specifications instead
-```
-
-**Rationale**: System remains functional even when optional tools unavailable; users get clear guidance on enabling features.
-
----
-
-## Getting Started
+## Development Guide
 
 ### Prerequisites
 
-- Python 3.9+
-- Neo4j 5.x (for production MCP server)
+- Python 3.8+
+- Neo4j 4.4+ (for production MCP server)
+- Node.js 16+ (for MCP CLI tools, optional)
 - Claude API key (for orchestrators)
-- Optional: Figma access token, V0 API key
 
-### Installation Steps
+### Installation
 
-1. **Clone Repository**:
-   ```bash
-   git clone <repository-url>
-   cd lila-mcp
-   ```
-
-2. **Install Dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Configure Environment** (create `.env`):
-   ```bash
-   NEO4J_URI=bolt://localhost:7687
-   NEO4J_USER=neo4j
-   NEO4J_PASSWORD=passw0rd
-   ```
-
-4. **Start Neo4j** (optional, for production server):
-   ```bash
-   docker run -d -p 7687:7687 -p 7474:7474 \
-     -e NEO4J_AUTH=neo4j/passw0rd \
-     neo4j:5-community
-   ```
-
-5. **Import Data** (optional):
-   ```bash
-   python import_data.py --schema graphs/lila-graph-schema-v8.json --create-defaults
-   ```
-
-### Running Your First Query
-
-**Start Simple MCP Server**:
 ```bash
+# Clone repository
+git clone <repository-url>
+cd lila-mcp
+
+# Install Python dependencies
+pip install -r requirements.txt
+
+# Set up environment variables
+cp .env.example .env
+# Edit .env with your credentials
+```
+
+### Environment Configuration
+
+Create `.env` file:
+
+```bash
+# Required for MCP servers
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=your_password
+
+# Optional: Figma integration
+FIGMA_ACCESS_TOKEN=your_token
+
+# Optional: Vercel v0 integration
+V0_API_KEY=your_key
+```
+
+### Starting Neo4j (Docker)
+
+```bash
+# Start Neo4j container
+docker-compose up -d neo4j
+
+# Import schema and default data
+python import_data.py \
+  --schema graphs/lila-graph-schema-v8.json \
+  --create-defaults
+```
+
+### Running MCP Servers
+
+#### Production Server (Neo4j backend)
+
+```bash
+# Run directly
+python lila_mcp_server.py
+
+# Or with FastMCP CLI
+fastmcp dev lila_mcp_server.py
+```
+
+Server starts on `http://localhost:8765`
+
+Health check: `http://localhost:8765/health`
+
+#### Development Server (Mock data)
+
+```bash
+# Run directly
+python simple_lila_mcp_server.py
+
+# Or with FastMCP CLI
 fastmcp dev simple_lila_mcp_server.py
 ```
 
-**Connect from Claude Code**: Add to MCP settings and query resources like `neo4j://personas/all`
+No database required - uses in-memory mock data.
 
-### Running Your First Orchestration
+### Running Orchestrators
 
-**Architecture Analysis**:
+#### Architecture Analysis
+
 ```bash
+# Analyze current repository
 python -m orchestrators.architecture_orchestrator
+
+# Outputs to: repo_analysis/
 ```
 
-**Results**: Check `repo_analysis/` directory for:
-- Component inventory
-- Architecture diagrams
-- Data flow analysis
-- API documentation
-- Synthesis README
+#### UX Design Workflow
 
-### Common Use Cases
-
-**1. Analyze a Repository**:
 ```bash
-python -m orchestrators.architecture_orchestrator
+# Run UX workflow for project
+python -m orchestrators.ux_orchestrator "MyProject"
+
+# Outputs to: outputs/ux/MyProject/
 ```
 
-**2. Design a UX Workflow**:
-```bash
-python -m orchestrators.ux_orchestrator "My Dashboard Project"
-```
+### Creating Custom Orchestrators
 
-**3. Create Custom Orchestrator**:
+1. **Create orchestrator class**:
+
 ```python
+# my_orchestrator.py
 from orchestrators.base_orchestrator import BaseOrchestrator
+from claude_agent_sdk import AgentDefinition
+from pathlib import Path
+from typing import Dict, List
 
 class MyOrchestrator(BaseOrchestrator):
     def __init__(self):
-        super().__init__(domain_name="my_domain")
+        super().__init__(
+            domain_name="my_domain",
+            output_base_dir=Path("outputs")
+        )
+        self.docs_dir = self.output_dir / "docs"
+        self.create_output_structure()
 
-    def get_agent_definitions(self):
-        return {"my-agent": AgentDefinition(...)}
+    def get_agent_definitions(self) -> Dict[str, AgentDefinition]:
+        return {
+            "worker": AgentDefinition(
+                description="Worker agent",
+                prompt="You are a worker agent...",
+                tools=["Read", "Write"],
+                model="sonnet"
+            )
+        }
 
-    def get_allowed_tools(self):
-        return ["Read", "Write"]
+    def get_allowed_tools(self) -> List[str]:
+        return ["Read", "Write", "Grep", "Glob"]
 
     async def run(self):
-        await self.execute_phase("Phase 1", "my-agent", "prompt", self.client)
+        await self.execute_phase(
+            phase_name="Phase 1",
+            agent_name="worker",
+            prompt="Do work...",
+            client=self.client
+        )
 ```
 
-**4. Access Psychological Data**:
-```python
-from simple_lila_mcp_server import SimpleLilaMCPServer
+2. **Create agent definition** (optional - can also define inline):
 
+```json
+// agents/my_domain/worker.json
+{
+  "description": "Worker agent that does work",
+  "prompt": "You are a worker agent specialized in...",
+  "tools": ["Read", "Write", "Grep"],
+  "model": "sonnet"
+}
+```
+
+3. **Run orchestrator**:
+
+```python
+# main.py
+import asyncio
+from my_orchestrator import MyOrchestrator
+
+async def main():
+    orchestrator = MyOrchestrator()
+    await orchestrator.run_with_client()
+
+asyncio.run(main())
+```
+
+### Testing
+
+Run validation tests without API calls:
+
+```bash
+# Test all components
+python test_orchestrators.py
+
+# Tests:
+# - Import validation
+# - Agent registry functionality
+# - MCP registry functionality
+# - Orchestrator instantiation
+# - Figma integration setup
+```
+
+### Data Management
+
+#### Import Data to Neo4j
+
+```bash
+# Import schema and create defaults
+python import_data.py \
+  --schema graphs/lila-graph-schema-v8.json \
+  --create-defaults
+
+# Import from Cypher file
+python import_data.py \
+  --seed-data seed_data.cypher \
+  --schema graphs/lila-graph-schema-v8.json
+```
+
+#### Export Data from Neo4j
+
+```bash
+# Export to Cypher file
+python export_data.py --output seed_data.cypher
+
+# Exports:
+# - All PersonaAgent nodes
+# - All RELATIONSHIP edges
+# - All Memory nodes
+# - All Goal nodes
+```
+
+### Best Practices
+
+1. **Always use try-finally for resource cleanup**:
+```python
+server = LilaMCPServer()
+try:
+    await server.run_server()
+finally:
+    server.close()
+```
+
+2. **Leverage registries for caching**:
+```python
+# Agent registry caches loaded agents
+registry = AgentRegistry()
+agent = registry.load_agent('analyzer')  # Cached after first load
+```
+
+3. **Use SimpleLilaMCPServer for development**:
+```python
+# No Neo4j required for testing
 server = SimpleLilaMCPServer()
-# Query personas, relationships via MCP protocol
+```
+
+4. **Track costs in orchestrators**:
+```python
+orchestrator = ArchitectureOrchestrator()
+await orchestrator.run_with_client()
+print(f"Total: ${orchestrator.total_cost:.4f}")
+```
+
+5. **Verify outputs after workflow**:
+```python
+expected = [Path("docs/analysis.md")]
+all_created = await orchestrator.verify_outputs(expected)
 ```
 
 ---
@@ -630,116 +968,233 @@ server = SimpleLilaMCPServer()
 
 ### Detailed Documentation
 
-- **[Component Inventory](docs/01_component_inventory.md)** - Complete catalog of 17 Python files, 11+ classes, 52+ methods, 8 entry points
-- **[Architecture Diagrams](diagrams/02_architecture_diagrams.md)** - 8 Mermaid diagrams showing system layers, dependencies, class hierarchies
-- **[Data Flows](docs/03_data_flows.md)** - 7 sequence diagrams with detailed message routing and permission flows
-- **[API Reference](docs/04_api_reference.md)** - Complete API documentation with 25+ code examples
+| Document | Description | Location |
+|----------|-------------|----------|
+| **Component Inventory** | Complete catalog of all modules, classes, and functions | [docs/01_component_inventory.md](docs/01_component_inventory.md) |
+| **Architecture Diagrams** | Visual diagrams of system architecture and class hierarchies | [diagrams/02_architecture_diagrams.md](diagrams/02_architecture_diagrams.md) |
+| **Data Flow Analysis** | Sequence diagrams for orchestrator and MCP server flows | [docs/03_data_flows.md](docs/03_data_flows.md) |
+| **API Reference** | Complete API documentation with examples | [docs/04_api_reference.md](docs/04_api_reference.md) |
 
-### Source Code Locations
+### Key Files by Category
 
-**MCP Servers**:
-- [lila_mcp_server.py](../lila_mcp_server.py) - Production server with Neo4j (779 lines)
-- [simple_lila_mcp_server.py](../simple_lila_mcp_server.py) - Development server with mock data (830 lines)
+#### MCP Servers
+- `lila_mcp_server.py` - Production MCP server with Neo4j
+- `simple_lila_mcp_server.py` - Development MCP server with mock data
 
-**Orchestrators**:
-- [orchestrators/base_orchestrator.py](../orchestrators/base_orchestrator.py) - Abstract base class (344 lines)
-- [orchestrators/architecture_orchestrator.py](../orchestrators/architecture_orchestrator.py) - Repository analysis (313 lines)
-- [orchestrators/ux_orchestrator.py](../orchestrators/ux_orchestrator.py) - UX/UI design workflow (619 lines)
+#### Orchestrators
+- `orchestrators/base_orchestrator.py` - Base orchestrator framework
+- `orchestrators/architecture_orchestrator.py` - Architecture analysis
+- `orchestrators/ux_orchestrator.py` - UX design workflow
 
-**Tool Integration**:
-- [tools/mcp_registry.py](../tools/mcp_registry.py) - MCP server management (153 lines)
-- [tools/figma_integration.py](../tools/figma_integration.py) - Figma integration wrapper (157 lines)
+#### Registries
+- `agents/registry.py` - Agent discovery and loading
+- `tools/mcp_registry.py` - MCP server management
 
-**Agent Management**:
-- [agents/registry.py](../agents/registry.py) - Agent discovery and loading (100 lines)
+#### Data Management
+- `import_data.py` - Neo4j data importer
+- `export_data.py` - Neo4j data exporter
 
-**Data Management**:
-- [import_data.py](../import_data.py) - Neo4j data importer (465 lines)
-- [export_data.py](../export_data.py) - Neo4j data exporter (294 lines)
+#### Tests
+- `test_orchestrators.py` - Validation tests
 
-**Testing**:
-- [test_orchestrators.py](../test_orchestrators.py) - Validation tests (209 lines)
+### External Resources
 
-### External Dependencies
+- **FastMCP Documentation**: https://github.com/jlowin/fastmcp
+- **Claude Agent SDK**: https://github.com/anthropics/anthropic-sdk-python
+- **Neo4j Python Driver**: https://neo4j.com/docs/python-manual/current/
+- **Model Context Protocol**: https://modelcontextprotocol.io/
 
-- **claude_agent_sdk**: Agent orchestration and SDK tools
-- **fastmcp**: FastMCP server framework
-- **neo4j**: Neo4j Python driver
-- **starlette**: ASGI framework (used by FastMCP)
-- **dotenv**: Environment variable management
+---
+
+## Appendices
+
+### A. System Metrics
+
+**Component Counts**:
+- MCP Servers: 2 (production + development)
+- Orchestrators: 2 domain-specific + 1 base + 1 mixin
+- Agents: 6 (2 architecture + 4 UX)
+- Registries: 2 (agents + MCP servers)
+- Data Management: 2 (import + export)
+- Total Python Files: 17
+
+**Public API Surface**:
+- MCP Resources: 8+ endpoints
+- MCP Tools: 8+ async functions
+- MCP Prompts: 3+ templates
+- Orchestrator Base Methods: 15+
+- Registry Methods: 10+
+
+### B. Database Schema
+
+**Node Labels**:
+- `PersonaAgent`: Individual personas with psychological profiles
+- `Memory`: Episodic memories with emotional context
+- `Goal`: Relationship goals with progress tracking
+
+**Relationship Types**:
+- `RELATIONSHIP`: Connections between personas (trust, intimacy, strength)
+- `HAS_MEMORY`: Links personas to memories
+- `HAS_GOAL`: Links personas to goals
+
+**Key Properties**:
+- Personas: `persona_id`, `name`, `age`, `role`, `attachment_style`, Big Five traits
+- Relationships: `trust_level`, `intimacy_level`, `relationship_strength`, `emotional_valence`
+- Memories: `content`, `memory_type`, `importance_score`, `emotional_valence`
+- Goals: `goal_type`, `description`, `progress`, `status`, `priority`
+
+### C. Attachment Theory Reference
+
+**Attachment Styles**:
+
+1. **Secure Attachment**
+   - Comfortable with intimacy and autonomy
+   - Balanced approach to relationships
+   - Effective emotional regulation
+   - Strategies: emotional_bonding, vulnerable_disclosure, supportive_listening, trust_building
+
+2. **Anxious Attachment**
+   - Seeks closeness but fears abandonment
+   - High sensitivity to relationship threats
+   - Tends toward hyperactivation
+   - Strategies: reassurance_seeking, emotional_validation, secure_bonding, safety_creation
+
+3. **Avoidant Attachment**
+   - Values independence over closeness
+   - Discomfort with vulnerability
+   - Tends toward deactivation
+   - Strategies: autonomous_connection, thoughtful_presence, respectful_distance, gradual_opening
+
+4. **Exploratory Attachment** (Custom)
+   - Seeks authentic expression and growth
+   - Values curiosity and learning
+   - Balances connection with exploration
+   - Strategies: growth_oriented_support, playful_engagement, curious_exploration, authentic_expression
+
+### D. Tool Permission Reference
+
+**Permission Modes**:
+
+| Mode | Read | Write | Grep | Glob | Bash | WebSearch |
+|------|------|-------|------|------|------|-----------|
+| `acceptEdits` | ✓ Auto | ✓ Auto | ✓ Auto | ✓ Auto | ⚠ Ask | ✓ Auto |
+| `ask` | ⚠ Ask | ⚠ Ask | ⚠ Ask | ⚠ Ask | ⚠ Ask | ⚠ Ask |
+
+Legend:
+- ✓ Auto = Automatically approved
+- ⚠ Ask = Requires user approval
+
+**Destructive Operations** (always prompt in `acceptEdits`):
+- Bash: `rm`, `rmdir`, `del`, `mv` (overwrite), `>` (redirect)
+- Write: Overwriting existing files with substantial content
+
+### E. Environment Variables Reference
+
+```bash
+# Neo4j Configuration (Required for LilaMCPServer)
+NEO4J_URI=bolt://localhost:7687          # Connection URI
+NEO4J_USER=neo4j                         # Username
+NEO4J_PASSWORD=your_password             # Password (required)
+
+# Neo4j Advanced (Optional)
+NEO4J_TIMEOUT=30                         # Query timeout (seconds)
+NEO4J_MAX_RETRY_TIME=60                  # Max retry duration
+
+# Figma Integration (Optional)
+FIGMA_ACCESS_TOKEN=your_token            # Personal access token
+FIGMA_FILE_ID=your_file_id               # Default file ID
+
+# Vercel v0 Integration (Optional)
+V0_API_KEY=your_key                      # v0 API key
+
+# Claude Agent SDK (Required for orchestrators)
+ANTHROPIC_API_KEY=your_api_key           # Set via Claude Code or env
+```
+
+### F. Common Commands Quick Reference
+
+```bash
+# Start Neo4j
+docker-compose up -d neo4j
+
+# Import data
+python import_data.py --schema graphs/lila-graph-schema-v8.json --create-defaults
+
+# Start MCP servers
+python lila_mcp_server.py                # Production
+python simple_lila_mcp_server.py         # Development
+
+# Run orchestrators
+python -m orchestrators.architecture_orchestrator
+python -m orchestrators.ux_orchestrator "ProjectName"
+
+# Export data
+python export_data.py --output seed_data.cypher
+
+# Run tests
+python test_orchestrators.py
+
+# Check health
+curl http://localhost:8765/health
+```
+
+### G. Troubleshooting
+
+**Neo4j Connection Issues**:
+```bash
+# Check if Neo4j is running
+docker ps | grep neo4j
+
+# Check logs
+docker logs lila-mcp-neo4j-1
+
+# Verify credentials
+python -c "from neo4j import GraphDatabase; driver = GraphDatabase.driver('bolt://localhost:7687', auth=('neo4j', 'your_password')); driver.verify_connectivity(); print('✓ Connected')"
+```
+
+**MCP Server Not Starting**:
+```bash
+# Check port availability
+lsof -i :8765
+
+# Check environment variables
+python -c "import os; print('NEO4J_PASSWORD:', 'SET' if os.getenv('NEO4J_PASSWORD') else 'NOT SET')"
+
+# Use mock server for testing
+python simple_lila_mcp_server.py  # No Neo4j required
+```
+
+**Orchestrator Errors**:
+```bash
+# Check Claude API key
+python -c "import os; print('ANTHROPIC_API_KEY:', 'SET' if os.getenv('ANTHROPIC_API_KEY') else 'NOT SET')"
+
+# Run with debug output
+python -m orchestrators.architecture_orchestrator 2>&1 | tee debug.log
+
+# Test without API calls
+python test_orchestrators.py
+```
 
 ---
 
 ## Contributing
 
-### Documentation Maintenance
+This repository demonstrates multi-domain agent orchestration patterns. To contribute:
 
-This documentation is **auto-generated** by the ArchitectureOrchestrator. To update:
-
-1. **Modify Source Code**: Make changes to Python files
-2. **Re-run Orchestrator**:
-   ```bash
-   python -m orchestrators.architecture_orchestrator
-   ```
-3. **Review Generated Docs**: Check `repo_analysis/` for updates
-4. **Commit Changes**: Include both source and documentation
-
-### Adding New Components
-
-**New Orchestrator**:
-1. Create class extending `BaseOrchestrator`
-2. Implement abstract methods: `get_agent_definitions()`, `get_allowed_tools()`, `run()`
-3. Add agent JSON files to `agents/<domain>/`
-4. Update tests in `test_orchestrators.py`
-
-**New MCP Tool**:
-1. Add server config to `MCPRegistry.discover_mcp_servers()`
-2. Include tools list and configuration requirements
-3. Add fallback options in `get_fallback_options()`
-
-**New Agent**:
-1. Create JSON file in `agents/<domain>/<agent-name>.json`
-2. Define: description, prompt, tools, model
-3. Registry auto-discovers on next run
-
-### Best Practices
-
-- **Keep Documentation Synchronized**: Re-generate after major changes
-- **Add Code Examples**: Update API Reference with practical examples
-- **Update Diagrams**: Modify Mermaid diagrams when architecture changes
-- **Document Design Decisions**: Add to "Key Design Decisions" section
-- **Cross-Reference**: Link between documentation files for deep dives
+1. Create custom orchestrators following `BaseOrchestrator` pattern
+2. Add agent definitions to `agents/{domain}/` directory
+3. Register MCP servers in `MCPRegistry` for tool integration
+4. Document changes in appropriate documentation files
 
 ---
 
-## Summary
+## License
 
-### Key Insights Synthesized
-
-1. **Dual-Server Strategy**: Production (Neo4j) and development (mock) servers enable flexible deployment
-2. **Phase-Based Orchestration**: Complex workflows decomposed into sequential phases with specialized agents
-3. **Registry Pattern**: Centralized discovery enables dynamic tool availability and graceful degradation
-4. **Layered Architecture**: 6 distinct layers with clear responsibilities and minimal coupling
-5. **Extensibility Focus**: Abstract base classes and JSON-based agent definitions enable rapid extension
-
-### Documentation Cross-References
-
-**Total Cross-References**: 45+
-- Component Inventory ↔ Architecture Diagrams: 12 references
-- Architecture Diagrams ↔ Data Flows: 8 references
-- Data Flows ↔ API Reference: 15 references
-- API Reference ↔ Component Inventory: 10 references
-
-### Main Themes Highlighted
-
-1. **Multi-Domain Agent Orchestration**: Framework for coordinating specialized agents across workflows
-2. **Psychological Relationship Modeling**: Graph-based data structures for attachment theory and relationship dynamics
-3. **Tool Integration & Graceful Degradation**: Registry-based tool management with fallback options
-4. **Observable & Measurable Workflows**: Real-time progress, cost tracking, and output verification
-5. **Extensibility & Modularity**: Abstract base classes, JSON-driven configuration, plugin architecture
+See LICENSE file for details.
 
 ---
 
-**Last Updated**: 2025-10-03
-**Documentation Version**: 1.0
-**Generated By**: ArchitectureOrchestrator v1.0
+**Documentation Generated**: 2025-10-03
+**Repository**: Lila MCP - Multi-domain Agent Orchestration System
+**Framework Version**: 1.0.0
