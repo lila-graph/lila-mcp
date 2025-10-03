@@ -13,6 +13,13 @@ The system implements:
 - **Neo4j graph database** for storing persona relationships and interactions
 - **FastMCP framework** for MCP server implementation
 
+### Key Technologies
+- **Python 3.12** - Required version
+- **FastMCP 2.12.3+** - MCP server framework
+- **Neo4j 5.15.0+** - Graph database (with APOC plugin)
+- **uv** - Package and virtual environment manager
+- **Docker Compose** - Multi-service orchestration
+
 ## Development Commands
 
 ### Environment Setup
@@ -76,10 +83,13 @@ python test_mcp_validation.py
 
 ```bash
 # Import seed data into Neo4j
-python import_data.py --seed-data seed_data.cypher --schema graphs/lila-graph-schema-v8.json
+python import_data.py --seed-data seed_data.cypher --schema graphs2/lila-graph-schema-v8.json
 
 # Export data from Neo4j
 python export_data.py
+
+# Check Neo4j connection and data
+docker compose exec neo4j cypher-shell -u neo4j -p $NEO4J_PASSWORD "MATCH (p:PersonaAgent) RETURN count(p)"
 ```
 
 ### MCP Client Configuration
@@ -124,7 +134,44 @@ fastmcp install mcp-json
 
 ### Graph Schemas
 
-Located in `graphs/` directory (schema files define Neo4j node types, relationships, and constraints)
+- **`graphs2/lila-graph-schema-v8.json`** - Neo4j graph schema defining PersonaAgent nodes, relationship types, and constraints
+- **Note**: Use `graphs2/` directory for schema files (see Directory Permissions Issue below)
+
+### Directory Permissions Issue
+
+**Problem**: The `graphs/` directory has restrictive permissions and is inaccessible to the host user.
+
+**Root Cause**:
+- The `graphs/` directory is owned by UID:GID 7474:7474 (Neo4j container user)
+- Permissions are 700 (drwx------), making it readable only by the Neo4j container
+- This occurred when Docker Compose mounted Neo4j volumes and the container changed ownership
+
+**Workaround**:
+- Use the `graphs2/` directory instead (owned by host user, permissions 755)
+- `graphs2/` contains a copy of the schema file and is fully accessible
+- Created on Oct 3, 2025 as part of the "initial fastmcp cleanup"
+
+**To Fix Permanently** (if you need to restore `graphs/` access):
+
+```bash
+# Stop Neo4j container first
+docker compose stop neo4j
+
+# Change ownership back to host user
+sudo chown -R $(id -u):$(id -g) /home/donbr/lila-graph/lila-mcp/graphs/
+
+# Fix permissions
+sudo chmod 755 /home/donbr/lila-graph/lila-mcp/graphs/
+
+# Restart Neo4j
+docker compose up -d neo4j
+```
+
+**Why This Happens**:
+- Docker containers run with specific UIDs (Neo4j uses 7474)
+- When containers write to bind mounts, they use their internal UID
+- Host system may not have that UID mapped to a user
+- Results in "UNKNOWN" user ownership on host
 
 ## Key Architectural Concepts
 
@@ -144,6 +191,29 @@ def analyze_persona_compatibility(persona_a_id: str, persona_b_id: str) -> str:
 def assess_attachment_style(behavior_description: str) -> str:
     # Prompt implementation
 ```
+
+### MCP Endpoints Overview
+
+**Resources** (read-only data access):
+- `neo4j://personas/all` - All personas with psychological profiles
+- `neo4j://personas/{persona_id}` - Specific persona by ID
+- `neo4j://relationships/all` - All relationships with metrics
+- `neo4j://relationships/{persona1_id}/{persona2_id}` - Specific relationship
+- `neo4j://interactions/recent/{count}` - Recent interaction history
+
+**Tools** (actions and analysis):
+- `update_relationship_metrics` - Modify trust/intimacy/strength
+- `record_interaction` - Log interactions with emotional analysis
+- `analyze_persona_compatibility` - Assess relationship potential using attachment theory
+- `autonomous_strategy_selection` - AI-driven strategy selection based on attachment style
+- `assess_goal_progress` - Evaluate progress towards relationship goals
+- `generate_contextual_response` - Create psychologically authentic responses
+- Plus 2 additional tools for demo sessions and relationship state management
+
+**Prompts** (LLM-ready assessment frameworks):
+- `assess_attachment_style` - Determine attachment style from behavioral observations
+- `analyze_emotional_climate` - Evaluate conversation dynamics and safety
+- `generate_secure_response` - Create attachment-security-building responses
 
 ### Database Connection Strategy
 
@@ -272,8 +342,14 @@ with self.driver.session() as session:
 
 ### Server Selection
 - **`simple_lila_mcp_server.py`** - Use for development (has debug logging, mock data fallback)
+  - Default personas: "lila" and "don" with predefined psychological profiles
+  - Works without Neo4j running
+  - Enables FastMCP debug logging
 - **`lila_mcp_server.py`** - Use for production (requires Neo4j, full database integration)
-- Default configuration in `fastmcp.json` uses `simple_lila_mcp_server.py`
+  - Connects to live Neo4j database
+  - No mock data fallback
+  - Includes health check endpoint
+- Default configuration in `fastmcp.json` uses `lila_mcp_server.py` (line 6)
 
 ### FastMCP Configuration
 - **CRITICAL**: `fastmcp.json` must use `"project": "."` in environment config
@@ -295,6 +371,10 @@ with self.driver.session() as session:
 
 ### Testing and Documentation Reference
 - **Test Validation**: `test_mcp_validation.py` validates MCP protocol compliance
+  - Tests direct connection (in-memory, no network)
+  - Tests Inspector connection (requires `fastmcp dev` running)
+  - Expected counts: 6-9 resources, 8 tools, 3 prompts
+- **Component Documentation**: `repo_analysis/docs/01_component_inventory.md` contains detailed API reference for all MCP resources, tools, and prompts
 - **Data Flow Documentation**: `repo_analysis/docs/03_data_flows.md` contains sequence diagrams showing request routing and database query patterns
 - **Two Server Implementations**: `simple_lila_mcp_server.py` (mock data) vs `lila_mcp_server.py` (Neo4j data)
 
@@ -365,6 +445,58 @@ ps aux | grep -E "fastmcp|mcp-inspector" | grep -v grep
 ss -tulpn | grep -E "6274|6277"
 ```
 
+### Directory Permission Issues
+
+**Problem:** "Permission denied" when accessing `graphs/` directory or reading schema files
+
+**Symptoms:**
+
+```bash
+ls: cannot open directory 'graphs/': Permission denied
+# or
+Permission denied: 'graphs/lila-graph-schema-v8.json'
+```
+
+**Root Cause:** The `graphs/` directory is owned by the Neo4j Docker container user (UID 7474) with restrictive 700 permissions.
+
+**Solutions:**
+
+1. **Use the workaround** (Recommended):
+
+   ```bash
+   # Use graphs2/ directory instead
+   python import_data.py --schema graphs2/lila-graph-schema-v8.json
+   ```
+
+2. **Fix permissions permanently**:
+
+   ```bash
+   # Stop Neo4j first
+   docker compose stop neo4j
+
+   # Fix ownership and permissions
+   sudo chown -R $(id -u):$(id -g) graphs/
+   sudo chmod 755 graphs/
+
+   # Restart Neo4j
+   docker compose up -d neo4j
+   ```
+
+3. **Prevent the issue** (for new deployments):
+
+   ```bash
+   # Before first docker compose up, ensure correct ownership
+   chown -R $(id -u):$(id -g) graphs/
+   chmod 755 graphs/
+   ```
+
+**Understanding Docker UID Mapping:**
+
+- Docker containers run with specific UIDs (Neo4j = 7474)
+- When containers modify bind-mounted directories, they use their internal UID
+- Host may not have that UID, resulting in "UNKNOWN" ownership
+- Use named volumes instead of bind mounts to avoid this, or manage permissions carefully
+
 ### Other Issues
 
 **"Error Connecting to MCP Inspector Proxy"**: Use `simple_lila_mcp_server.py` instead of `lila_mcp_server.py` (this is the default in `fastmcp.json`)
@@ -376,3 +508,72 @@ ss -tulpn | grep -E "6274|6277"
 **Import failures**: Ensure you're in the repository root and `.env` file exists
 
 **MCP server healthcheck failures (406 Not Acceptable)**: This occurs when docker-compose healthchecks try to make simple HTTP requests to FastMCP's Streamable-HTTP transport, which requires specific MCP protocol headers. The healthcheck should be defined in the Dockerfile or removed from docker-compose.yml entirely. Do not use `curl -X POST http://localhost:8766/mcp` for healthchecks - it will return 406.
+
+## Quick Reference: Common Tasks
+
+### Switching Between Server Implementations
+
+```bash
+# Edit fastmcp.json line 6 to change server
+# For development (mock data):
+"path": "simple_lila_mcp_server.py"
+
+# For production (Neo4j required):
+"path": "lila_mcp_server.py"
+
+# Restart the server after changing
+pkill -f "fastmcp dev" && fastmcp dev
+```
+
+### Debugging Connection Issues
+
+```bash
+# 1. Check Neo4j is running
+docker compose ps neo4j
+
+# 2. Test Neo4j connection
+python -c "from neo4j import GraphDatabase; driver = GraphDatabase.driver('bolt://localhost:7687', auth=('neo4j', 'passw0rd')); driver.verify_connectivity(); print('✅ Connected')"
+
+# 3. Verify environment variables
+cat .env | grep NEO4J
+
+# 4. Run validation tests
+python test_mcp_validation.py
+```
+
+### Fixing Directory Permissions
+
+```bash
+# Check current permissions
+ls -la | grep graphs
+
+# Fix graphs/ directory ownership (if needed)
+sudo chown -R $(id -u):$(id -g) graphs/
+sudo chmod 755 graphs/
+
+# Or use the graphs2/ workaround
+python import_data.py --schema graphs2/lila-graph-schema-v8.json
+```
+
+### Working with Docker Services
+
+```bash
+# Start only Neo4j
+docker compose up -d neo4j
+
+# View logs for specific service
+docker compose logs -f mcp-server
+
+# Restart a service
+docker compose restart mcp-server
+
+# Clean up and start fresh
+docker compose down -v && docker compose up -d
+```
+
+### Accessing Services
+
+- **Neo4j Browser**: <http://localhost:7474> (user: neo4j, password from .env)
+- **MCP Inspector**: <http://localhost:6274/?MCP_PROXY_AUTH_TOKEN=TOKEN> (run `fastmcp dev` first)
+- **Nginx Proxy**: <http://localhost:8080> (production MCP endpoint)
+- **MCP Server Direct**: <http://localhost:8766> (Streamable-HTTP, requires MCP client)
