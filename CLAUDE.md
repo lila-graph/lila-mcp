@@ -62,6 +62,12 @@ fastmcp inspect
 # Run validation tests
 python test_mcp_validation.py
 
+# Expected test output:
+# ✅ Resources found: 6-9 (depending on simple vs full server)
+# ✅ Tools found: 8
+# ✅ Prompts found: 3
+# Test validates MCP protocol compliance and endpoint registration
+
 # Initialize database with seed data
 ./init_mcp_database.sh
 ```
@@ -93,9 +99,10 @@ fastmcp install mcp-json
 
 ### Core Server Files
 
-- **`lila_mcp_server.py`** - Full-featured MCP server with complete Neo4j integration and all psychological intelligence features
-- **`simple_lila_mcp_server.py`** - Simplified MCP server with debug logging enabled, recommended for development
-- **`fastmcp.json`** - FastMCP configuration defining server entrypoint, dependencies, and deployment settings
+- **`lila_mcp_server.py`** - Full-featured MCP server with complete Neo4j integration and all psychological intelligence features (production)
+- **`simple_lila_mcp_server.py`** - Simplified MCP server with debug logging enabled and mock data fallback (development default)
+- **`fastmcp.json`** - FastMCP configuration defining server entrypoint (`"path": "lila_mcp_server.py"` on line 6), dependencies via `"project": "."`, and deployment settings
+- **`test_mcp_validation.py`** - Validates MCP protocol compliance, endpoint registration, and resource/tool/prompt counts
 
 ### Data Management
 
@@ -286,9 +293,10 @@ with self.driver.session() as session:
 - Nginx proxy exposes the service on port 8080 with proper SSE/streaming support
 - **Health checks**: The mcp-server healthcheck is defined in the Dockerfile (not docker-compose.yml) to avoid protocol compatibility issues with FastMCP's Streamable-HTTP transport
 
-### Testing Reference
-- See `TESTING.md` for complete testing workflow documentation
-- Two server implementations support different testing scenarios (mock vs real data)
+### Testing and Documentation Reference
+- **Test Validation**: `test_mcp_validation.py` validates MCP protocol compliance
+- **Data Flow Documentation**: `repo_analysis/docs/03_data_flows.md` contains sequence diagrams showing request routing and database query patterns
+- **Two Server Implementations**: `simple_lila_mcp_server.py` (mock data) vs `lila_mcp_server.py` (Neo4j data)
 
 ## Troubleshooting
 

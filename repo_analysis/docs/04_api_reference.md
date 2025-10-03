@@ -16,13 +16,23 @@ The API is built on FastMCP and integrates with Neo4j for graph-based relationsh
 - Data Import: `/home/donbr/lila-graph/lila-mcp/import_data.py`
 - Data Export: `/home/donbr/lila-graph/lila-mcp/export_data.py`
 
+### Server Comparison
+
+| Feature | LilaMCPServer | SimpleLilaMCPServer |
+|---------|---------------|---------------------|
+| Resources | 5 | 9 |
+| Tools | 6 | 8 |
+| Prompts | 3 | 3 |
+| Database | Neo4j | In-memory mock data |
+| Use Case | Production | Development/Testing |
+
 ---
 
 ## Core Classes
 
 ### LilaMCPServer
 
-**Source:** `/home/donbr/lila-graph/lila-mcp/lila_mcp_server.py:29-750`
+**Source:** `/home/donbr/lila-graph/lila-mcp/lila_mcp_server.py:29-779`
 
 The primary MCP server class that connects to Neo4j and exposes psychological relationship data.
 
@@ -38,7 +48,7 @@ class LilaMCPServer:
 
 ##### `__init__(self) -> None`
 
-**Lines:** 32-43
+**Lines:** 32-44
 
 Initializes the server, sets up Neo4j connection, and registers all MCP endpoints.
 
@@ -57,7 +67,7 @@ server = LilaMCPServer()
 
 ##### `_setup_database(self) -> None`
 
-**Lines:** 45-62
+**Lines:** 46-62
 
 Establishes Neo4j connection with environment-based configuration.
 
@@ -74,7 +84,7 @@ Establishes Neo4j connection with environment-based configuration.
 
 ##### `close(self) -> None`
 
-**Lines:** 63-66
+**Lines:** 64-67
 
 Safely closes the Neo4j driver connection.
 
@@ -89,7 +99,7 @@ finally:
 
 ##### `async run_server(self, host: str = "localhost", port: int = 8765) -> None`
 
-**Lines:** 740-746
+**Lines:** 756-762
 
 Starts the MCP server with SSE transport.
 
@@ -109,9 +119,9 @@ asyncio.run(server.run_server(host="0.0.0.0", port=8766))
 
 ### SimpleLilaMCPServer
 
-**Source:** `/home/donbr/lila-graph/lila-mcp/simple_lila_mcp_server.py:33-843`
+**Source:** `/home/donbr/lila-graph/lila-mcp/simple_lila_mcp_server.py:33-830`
 
-A simplified MCP server with the same interface as LilaMCPServer, useful for testing and development.
+A simplified MCP server with mock data for development and testing. Provides the same interface as LilaMCPServer plus additional development-focused resources.
 
 ```python
 class SimpleLilaMCPServer:
@@ -122,19 +132,37 @@ class SimpleLilaMCPServer:
 ```
 
 **Key Differences from LilaMCPServer:**
-- Enhanced debug logging enabled by default (line 28-29)
-- Same API surface but optimized for development
-- Includes additional development-focused resources
+- Enhanced debug logging enabled by default (lines 27-29)
+- Uses in-memory mock data instead of Neo4j
+- Includes 4 additional resources for development
+- Includes 2 additional tools for demo sessions
+- Immediate responses with no network latency
+- Deterministic behavior for testing
+
+**Mock Data:**
+- Pre-configured personas: "lila" (secure) and "don" (anxious)
+- Sample relationship with trust_level=7.5, intimacy_level=6.8
+- Sample interactions for testing
+
+**Additional Resources:**
+1. `neo4j://emotional_climate/current` - Current emotional climate assessment
+2. `neo4j://attachment_styles/analysis` - Attachment style compatibility matrix
+3. `neo4j://goals/active` - Active relationship goals
+4. `neo4j://psychological_insights/trends` - Psychological development trends
+
+**Additional Tools:**
+1. `commit_relationship_state` - Explicitly commit relationship state
+2. `finalize_demo_session` - Finalize all states at demo end
 
 ---
 
 ## MCP Resources
 
-Resources provide read-only access to psychological data stored in Neo4j.
+Resources provide read-only access to psychological data stored in Neo4j (or mock data in SimpleLilaMCPServer).
 
 ### neo4j://personas/all
 
-**Lines:** 71-113 (lila_mcp_server.py)
+**Lines:** 72-114 (lila_mcp_server.py), 128-170 (simple_lila_mcp_server.py)
 
 Retrieves all personas with their psychological profiles.
 
@@ -194,7 +222,7 @@ async with Client(mcp_server) as client:
 
 ### neo4j://personas/{persona_id}
 
-**Lines:** 115-160 (lila_mcp_server.py)
+**Lines:** 116-161 (lila_mcp_server.py), 172-217 (simple_lila_mcp_server.py)
 
 Retrieves a specific persona by ID with full psychological profile.
 
@@ -227,16 +255,6 @@ Retrieves a specific persona by ID with full psychological profile.
 }
 ```
 
-**Cypher Query:**
-```cypher
-MATCH (p:PersonaAgent {persona_id: $persona_id})
-RETURN p.persona_id as persona_id, p.name as name, p.age as age, p.role as role,
-       p.description as description, p.attachment_style as attachment_style,
-       p.openness as openness, p.conscientiousness as conscientiousness,
-       p.extraversion as extraversion, p.agreeableness as agreeableness, p.neuroticism as neuroticism,
-       p.trust_level as trust_level, p.communication_style as communication_style
-```
-
 **Usage Example:**
 ```python
 async with Client(mcp_server) as client:
@@ -253,7 +271,7 @@ async with Client(mcp_server) as client:
 
 ### neo4j://relationships/all
 
-**Lines:** 162-205 (lila_mcp_server.py)
+**Lines:** 163-206 (lila_mcp_server.py), 219-235 (simple_lila_mcp_server.py)
 
 Retrieves all relationships with psychological metrics.
 
@@ -306,7 +324,7 @@ async with Client(mcp_server) as client:
 
 ### neo4j://relationships/{persona1_id}/{persona2_id}
 
-**Lines:** 207-252 (lila_mcp_server.py)
+**Lines:** 208-253 (lila_mcp_server.py), 237-256 (simple_lila_mcp_server.py)
 
 Retrieves specific relationship metrics between two personas.
 
@@ -337,19 +355,6 @@ Retrieves specific relationship metrics between two personas.
 }
 ```
 
-**Cypher Query:**
-```cypher
-MATCH (p1:PersonaAgent {persona_id: $persona1_id})-[r:RELATIONSHIP]-(p2:PersonaAgent {persona_id: $persona2_id})
-RETURN p1.name as name1, p2.name as name2,
-       r.trust_level as trust_level, r.intimacy_level as intimacy_level,
-       r.relationship_strength as relationship_strength,
-       r.interaction_count as interaction_count,
-       r.relationship_type as relationship_type,
-       r.emotional_valence as emotional_valence,
-       r.created_at as created_at, r.updated_at as updated_at
-LIMIT 1
-```
-
 **Note:** Query is bidirectional - works regardless of persona order.
 
 **Usage Example:**
@@ -369,7 +374,7 @@ async with Client(mcp_server) as client:
 
 ### neo4j://interactions/recent/{count}
 
-**Lines:** 254-294 (lila_mcp_server.py)
+**Lines:** 255-295 (lila_mcp_server.py), 258-268 (simple_lila_mcp_server.py)
 
 Retrieves recent interactions with psychological analysis.
 
@@ -416,13 +421,169 @@ async with Client(mcp_server) as client:
 
 ---
 
+### neo4j://emotional_climate/current
+
+**Lines:** 270-289 (simple_lila_mcp_server.py)
+
+**Available in:** SimpleLilaMCPServer only
+
+Assesses current emotional climate across all relationships.
+
+**URI:** `neo4j://emotional_climate/current`
+
+**Return Schema:**
+```json
+{
+  "overall_climate": {
+    "safety_level": number,      // 0.0-10.0
+    "positivity": number,         // 0.0-10.0
+    "authenticity": number,       // 0.0-10.0
+    "growth_potential": number    // 0.0-10.0
+  },
+  "risk_factors": ["string"],
+  "strengths": ["string"]
+}
+```
+
+**Usage Example:**
+```python
+async with Client(simple_server) as client:
+    climate = await client.read_resource("neo4j://emotional_climate/current")
+    data = json.loads(climate)
+    print(f"Safety level: {data['overall_climate']['safety_level']}/10")
+    print(f"Risk factors: {', '.join(data['risk_factors'])}")
+```
+
+---
+
+### neo4j://attachment_styles/analysis
+
+**Lines:** 291-308 (simple_lila_mcp_server.py)
+
+**Available in:** SimpleLilaMCPServer only
+
+Analyzes attachment style compatibility and dynamics.
+
+**URI:** `neo4j://attachment_styles/analysis`
+
+**Return Schema:**
+```json
+{
+  "compatibility_matrix": {
+    "lila_don": {
+      "overall_score": number,              // 0.0-10.0
+      "attachment_compatibility": number,    // 0.0-10.0
+      "challenges": ["string"],
+      "strengths": ["string"]
+    }
+  },
+  "recommendations": ["string"]
+}
+```
+
+**Usage Example:**
+```python
+async with Client(simple_server) as client:
+    analysis = await client.read_resource("neo4j://attachment_styles/analysis")
+    data = json.loads(analysis)
+    for pair, compat in data['compatibility_matrix'].items():
+        print(f"{pair}: {compat['overall_score']}/10")
+```
+
+---
+
+### neo4j://goals/active
+
+**Lines:** 310-331 (simple_lila_mcp_server.py)
+
+**Available in:** SimpleLilaMCPServer only
+
+Retrieves all active relationship goals across personas.
+
+**URI:** `neo4j://goals/active`
+
+**Return Schema:**
+```json
+{
+  "active_goals": [
+    {
+      "persona_id": "string",
+      "goal_type": "string",
+      "description": "string",
+      "progress": number,          // 0.0-1.0
+      "strategies": ["string"]
+    }
+  ],
+  "completion_rate": number        // 0.0-1.0
+}
+```
+
+**Usage Example:**
+```python
+async with Client(simple_server) as client:
+    goals = await client.read_resource("neo4j://goals/active")
+    data = json.loads(goals)
+    print(f"Active goals: {len(data['active_goals'])}")
+    print(f"Overall completion: {data['completion_rate']:.1%}")
+```
+
+---
+
+### neo4j://psychological_insights/trends
+
+**Lines:** 333-358 (simple_lila_mcp_server.py)
+
+**Available in:** SimpleLilaMCPServer only
+
+Tracks psychological development trends over time.
+
+**URI:** `neo4j://psychological_insights/trends`
+
+**Return Schema:**
+```json
+{
+  "trends": {
+    "trust_evolution": {
+      "direction": "increasing|steady|decreasing",
+      "rate": number,
+      "stability": "high|medium|low"
+    },
+    "intimacy_development": {
+      "direction": "string",
+      "rate": number,
+      "stability": "string"
+    },
+    "attachment_security": {
+      "direction": "string",
+      "rate": number,
+      "stability": "string"
+    }
+  },
+  "predictions": {
+    "next_month": "string",
+    "next_quarter": "string"
+  }
+}
+```
+
+**Usage Example:**
+```python
+async with Client(simple_server) as client:
+    trends = await client.read_resource("neo4j://psychological_insights/trends")
+    data = json.loads(trends)
+    trust_trend = data['trends']['trust_evolution']
+    print(f"Trust is {trust_trend['direction']} at rate {trust_trend['rate']}")
+```
+
+---
+
 ## MCP Tools
 
 Tools provide action-oriented endpoints for modifying data and generating analyses.
 
 ### update_relationship_metrics
 
-**Lines:** 299-359 (lila_mcp_server.py)
+**Lines:** 300-360 (lila_mcp_server.py), 363-400 (simple_lila_mcp_server.py)
 
 Updates relationship metrics between two personas with bounds checking.
 
@@ -518,7 +679,7 @@ async with Client(mcp_server) as client:
 
 ### record_interaction
 
-**Lines:** 361-398 (lila_mcp_server.py)
+**Lines:** 362-399 (lila_mcp_server.py), 402-435 (simple_lila_mcp_server.py)
 
 Records an interaction between two personas with psychological analysis.
 
@@ -589,7 +750,7 @@ async with Client(mcp_server) as client:
 
 ### analyze_persona_compatibility
 
-**Lines:** 400-460 (lila_mcp_server.py)
+**Lines:** 401-461 (lila_mcp_server.py), 437-475 (simple_lila_mcp_server.py)
 
 Assesses relationship potential between two personas based on attachment styles.
 
@@ -643,13 +804,6 @@ async def analyze_persona_compatibility(
 }
 ```
 
-**Cypher Query:**
-```cypher
-MATCH (p1:PersonaAgent {persona_id: $persona1_id}), (p2:PersonaAgent {persona_id: $persona2_id})
-RETURN p1.name as name1, p1.attachment_style as style1,
-       p2.name as name2, p2.attachment_style as style2
-```
-
 **Usage Example:**
 ```python
 async with Client(mcp_server) as client:
@@ -672,7 +826,7 @@ async with Client(mcp_server) as client:
 
 ### autonomous_strategy_selection
 
-**Lines:** 462-512 (lila_mcp_server.py)
+**Lines:** 463-513 (lila_mcp_server.py), 477-524 (simple_lila_mcp_server.py)
 
 AI-driven strategy selection based on attachment theory and context analysis.
 
@@ -770,7 +924,7 @@ async with Client(mcp_server) as client:
 
 ### assess_goal_progress
 
-**Lines:** 514-551 (lila_mcp_server.py)
+**Lines:** 515-552 (lila_mcp_server.py), 526-567 (simple_lila_mcp_server.py)
 
 Assesses progress toward relationship goals based on recent interactions.
 
@@ -831,7 +985,7 @@ async with Client(mcp_server) as client:
 
 ### generate_contextual_response
 
-**Lines:** 553-607 (lila_mcp_server.py)
+**Lines:** 554-608 (lila_mcp_server.py), 569-607 (simple_lila_mcp_server.py)
 
 Generates psychologically authentic response for a persona in a given context.
 
@@ -894,13 +1048,6 @@ response_text = "That's really interesting. I'd love to explore this more with y
 strategy = "curious_exploration"
 ```
 
-**Cypher Query:**
-```cypher
-MATCH (p:PersonaAgent {persona_id: $persona_id})
-RETURN p.name as name, p.attachment_style as attachment_style,
-       p.communication_style as communication_style
-```
-
 **Usage Example:**
 ```python
 async with Client(mcp_server) as client:
@@ -916,13 +1063,98 @@ async with Client(mcp_server) as client:
 
 ---
 
+### commit_relationship_state
+
+**Lines:** 609-619 (simple_lila_mcp_server.py)
+
+**Available in:** SimpleLilaMCPServer only
+
+Explicitly commits current relationship state to ensure persistence.
+
+**Function Signature:**
+```python
+async def commit_relationship_state(persona1_id: str, persona2_id: str) -> str
+```
+
+**Parameters:**
+- `persona1_id` (str): First persona identifier
+- `persona2_id` (str): Second persona identifier
+
+**Returns:** JSON string with commit confirmation
+
+**Return Schema:**
+```json
+{
+  "success": true,
+  "committed": {
+    "participants": ["persona1_id", "persona2_id"],
+    "timestamp": "ISO-8601 timestamp"
+  }
+}
+```
+
+**Usage Example:**
+```python
+async with Client(simple_server) as client:
+    result = await client.call_tool("commit_relationship_state", {
+        "persona1_id": "lila",
+        "persona2_id": "don"
+    })
+    data = json.loads(result.content[0].text)
+    print(f"Committed at: {data['committed']['timestamp']}")
+```
+
+**Note:** In SimpleLilaMCPServer, data is already persisted in memory. This tool is provided for API compatibility and demo purposes.
+
+---
+
+### finalize_demo_session
+
+**Lines:** 621-631 (simple_lila_mcp_server.py)
+
+**Available in:** SimpleLilaMCPServer only
+
+Finalizes all relationship states at end of demo to ensure persistence.
+
+**Function Signature:**
+```python
+async def finalize_demo_session() -> str
+```
+
+**Parameters:** None
+
+**Returns:** JSON string with finalization confirmation
+
+**Return Schema:**
+```json
+{
+  "success": true,
+  "finalized": {
+    "committed_relationships": number,
+    "timestamp": "ISO-8601 timestamp"
+  }
+}
+```
+
+**Usage Example:**
+```python
+async with Client(simple_server) as client:
+    result = await client.call_tool("finalize_demo_session", {})
+    data = json.loads(result.content[0].text)
+    print(f"Finalized {data['finalized']['committed_relationships']} relationships")
+```
+
+**Note:** Useful for ending demo sessions and ensuring all state is "committed" before shutdown.
+
+---
+
 ## MCP Prompts
 
 Prompts provide templated LLM prompts for psychological assessments and therapeutic guidance.
 
 ### assess_attachment_style
 
-**Lines:** 612-642 (lila_mcp_server.py)
+**Lines:** 613-643 (lila_mcp_server.py), 636-697 (simple_lila_mcp_server.py)
 
 Determines persona's attachment style from behavioral observations.
 
@@ -1000,7 +1232,7 @@ ANALYSIS FRAMEWORK:
 
 ### analyze_emotional_climate
 
-**Lines:** 644-693 (lila_mcp_server.py)
+**Lines:** 645-694 (lila_mcp_server.py), 699-755 (simple_lila_mcp_server.py)
 
 Evaluates conversation emotional dynamics and safety levels.
 
@@ -1075,26 +1307,11 @@ async with Client(mcp_server) as client:
     print(f"Safety assessment: {llm_response}")
 ```
 
-**Prompt Template (excerpt):**
-```
-You are a relationship therapist analyzing emotional dynamics in
-interpersonal communication. Please evaluate the emotional climate
-and safety levels in this interaction.
-
-EMOTIONAL CLIMATE ASSESSMENT FRAMEWORK:
-
-1. Safety Level (1-10 scale):
-   - Psychological safety for vulnerability
-   - Respect for boundaries
-   - Absence of criticism, contempt, defensiveness, stonewalling
-...
-```
-
 ---
 
 ### generate_secure_response
 
-**Lines:** 695-738 (lila_mcp_server.py)
+**Lines:** 696-739 (lila_mcp_server.py), 757-822 (simple_lila_mcp_server.py)
 
 Creates attachment-security-building responses for various scenarios.
 
@@ -1160,32 +1377,13 @@ async with Client(mcp_server) as client:
     print(f"Recommended response: {llm_response}")
 ```
 
-**Prompt Template (excerpt):**
-```
-You are an attachment-informed therapist helping develop secure,
-emotionally attuned responses. Please generate responses that build
-attachment security and emotional safety.
-
-SCENARIO: {scenario_description}
-PARTICIPANTS: {personas}
-INSECURITY TRIGGERS PRESENT: {insecurity_triggers}
-GROWTH GOALS: {growth_goals}
-
-SECURE RESPONSE FRAMEWORK:
-
-1. Emotional Safety First:
-   - Validate emotions without necessarily agreeing with behaviors
-   - Create space for vulnerability
-...
-```
-
 ---
 
 ## Data Management APIs
 
 ### Neo4jDataImporter
 
-**Source:** `/home/donbr/lila-graph/lila-mcp/import_data.py:22-407`
+**Source:** `/home/donbr/lila-graph/lila-mcp/import_data.py:22-466`
 
 Imports psychological intelligence data and schema into Neo4j.
 
@@ -1463,7 +1661,7 @@ importer.close()
 
 ### Neo4jDataExporter
 
-**Source:** `/home/donbr/lila-graph/lila-mcp/export_data.py:21-292`
+**Source:** `/home/donbr/lila-graph/lila-mcp/export_data.py:21-295`
 
 Exports psychological intelligence data from Neo4j for MCP standalone seeding.
 
@@ -1542,22 +1740,6 @@ Exports all relationships between personas.
 
 **Returns:** List of relationship dictionaries
 
-**Cypher Query:**
-```cypher
-MATCH (p1:PersonaAgent)-[r:RELATIONSHIP]->(p2:PersonaAgent)
-RETURN p1.persona_id as persona1_id,
-       p2.persona_id as persona2_id,
-       r.trust_level as trust_level,
-       r.intimacy_level as intimacy_level,
-       r.relationship_strength as relationship_strength,
-       r.interaction_count as interaction_count,
-       r.last_interaction as last_interaction,
-       r.relationship_type as relationship_type,
-       r.emotional_valence as emotional_valence,
-       r.created_at as created_at,
-       r.updated_at as updated_at
-```
-
 ##### `export_memories(self) -> List[Dict[str, Any]]`
 
 **Lines:** 91-113
@@ -1566,19 +1748,6 @@ Exports memory nodes associated with personas.
 
 **Returns:** List of memory dictionaries
 
-**Cypher Query:**
-```cypher
-MATCH (p:PersonaAgent)-[:HAS_MEMORY]->(m:Memory)
-RETURN p.persona_id as persona_id,
-       m.memory_id as memory_id,
-       m.content as content,
-       m.memory_type as memory_type,
-       m.importance_score as importance_score,
-       m.emotional_valence as emotional_valence,
-       m.participants as participants,
-       m.created_at as created_at
-```
-
 ##### `export_goals(self) -> List[Dict[str, Any]]`
 
 **Lines:** 115-139
@@ -1586,21 +1755,6 @@ RETURN p.persona_id as persona_id,
 Exports goal nodes associated with personas.
 
 **Returns:** List of goal dictionaries
-
-**Cypher Query:**
-```cypher
-MATCH (p:PersonaAgent)-[:HAS_GOAL]->(g:Goal)
-RETURN p.persona_id as persona_id,
-       g.goal_id as goal_id,
-       g.goal_type as goal_type,
-       g.description as description,
-       g.progress as progress,
-       g.target_persona as target_persona,
-       g.priority as priority,
-       g.status as status,
-       g.created_at as created_at,
-       g.updated_at as updated_at
-```
 
 ##### `generate_cypher_script(self, personas, relationships, memories, goals) -> str`
 
@@ -1615,31 +1769,6 @@ Generates Cypher script for importing data into MCP standalone.
 - `goals` (List[Dict]): Goal data
 
 **Returns:** Complete Cypher script as string
-
-**Output Format:**
-```cypher
-// Lila Psychological Intelligence System - Seed Data for MCP Standalone
-// Generated from main system export
-
-// Clear existing data
-MATCH (n) DETACH DELETE n;
-
-// Create Personas
-CREATE (:PersonaAgent {persona_id: 'lila', name: 'Lila', ...});
-CREATE (:PersonaAgent {persona_id: 'alex', name: 'Alex', ...});
-
-// Create Relationships
-MATCH (p1:PersonaAgent {persona_id: 'lila'}), (p2:PersonaAgent {persona_id: 'alex'})
-CREATE (p1)-[:RELATIONSHIP {trust_level: 8.5, ...}]->(p2);
-
-// Create Memories
-MATCH (p:PersonaAgent {persona_id: 'lila'})
-CREATE (p)-[:HAS_MEMORY]->(:Memory {memory_id: 'mem_001', ...});
-
-// Create Goals
-MATCH (p:PersonaAgent {persona_id: 'lila'})
-CREATE (p)-[:HAS_GOAL]->(:Goal {goal_id: 'goal_001', ...});
-```
 
 **Usage Example:**
 ```python
@@ -1827,62 +1956,6 @@ SERVICE_ENVIRONMENT=development
 
 ### Configuration Files
 
-#### pyproject.toml
-
-**Source:** `/home/donbr/lila-graph/lila-mcp/pyproject.toml`
-
-Python project configuration and dependencies.
-
-**Key Sections:**
-
-**Project Metadata:**
-```toml
-[project]
-name = "lila-mcp-standalone"
-version = "1.0.0"
-description = "Standalone Lila MCP Server - Minimal psychological relationship intelligence"
-requires-python = ">=3.12"
-```
-
-**Core Dependencies:**
-```toml
-dependencies = [
-    "fastmcp>=2.12.3",        # Core MCP framework
-    "neo4j>=5.15.0",          # Database connectivity
-    "openai>=1.30.0",         # LLM integration
-    "anthropic>=0.25.0",      # LLM integration
-    "pydantic>=2.6.0",        # Data validation
-    "python-dotenv>=1.0.0",   # Configuration
-    "logfire>=0.28.0",        # Observability
-]
-```
-
-**Development Dependencies:**
-```toml
-[project.optional-dependencies]
-dev = [
-    "pytest>=8.0.0",
-    "pytest-asyncio>=0.23.0",
-    "black>=24.0.0",
-    "ruff>=0.3.0",
-]
-```
-
-**Tool Configuration:**
-```toml
-[tool.black]
-line-length = 120
-target-version = ['py312']
-
-[tool.ruff]
-line-length = 120
-target-version = "py312"
-
-[tool.pytest.ini_options]
-asyncio_mode = "auto"
-testpaths = ["tests"]
-```
-
 #### fastmcp.json
 
 **Source:** `/home/donbr/lila-graph/lila-mcp/fastmcp.json`
@@ -1902,28 +1975,8 @@ FastMCP server deployment configuration.
 
   "environment": {
     "type": "uv",
-    "python": ">=3.12",
-    "dependencies": [
-      "fastmcp>=2.12.3",
-      "neo4j>=5.15.0",
-      "pydantic>=2.6.0",
-      "pydantic-settings>=2.2.0",
-      "python-dotenv>=1.0.0",
-      "openai>=1.30.0",
-      "anthropic>=0.25.0",
-      "httpx>=0.27.0",
-      "aiohttp>=3.9.0",
-      "logfire>=0.28.0",
-      "click>=8.1.0",
-      "asyncio-mqtt>=0.16.0"
-    ]
-  },
-
-  "deployment": {
-    "transport": "http",
-    "host": "0.0.0.0",
-    "port": 8766,
-    "log_level": "INFO"
+    "python": "3.12",
+    "project": "."
   }
 }
 ```
@@ -1938,13 +1991,7 @@ FastMCP server deployment configuration.
 **environment:**
 - `type`: "uv" for UV package manager
 - `python`: Python version requirement
-- `dependencies`: Runtime dependencies
-
-**deployment:**
-- `transport`: "http" or "stdio"
-- `host`: Server bind address
-- `port`: Server port
-- `log_level`: Logging verbosity
+- `project`: Project directory path
 
 ---
 
@@ -1968,8 +2015,8 @@ fastmcp dev lila_mcp_server.py
 # Direct Python execution
 python lila_mcp_server.py
 
-# Or with uvicorn
-uvicorn lila_mcp_server:mcp --host 0.0.0.0 --port 8766
+# Or with module import
+python -m lila_mcp_server
 ```
 
 #### Connecting as a Client
@@ -2005,6 +2052,8 @@ async with Client("http://localhost:8766/") as client:
 
 **Get All Personas:**
 ```python
+import json
+
 async with Client(mcp_server) as client:
     personas_json = await client.read_resource("neo4j://personas/all")
     personas = json.loads(personas_json)
@@ -2094,30 +2143,6 @@ async with Client(mcp_server) as client:
     print(response.choices[0].message.content)
 ```
 
-**Analyze Emotional Climate:**
-```python
-async with Client(mcp_server) as client:
-    conversation = """
-    Alex: I feel like you're always busy and don't have time for me.
-    Lila: I'm sorry you feel that way. Can we talk about what you need?
-    Alex: I just need to feel like I matter to you.
-    Lila: You absolutely matter. Let me show you that better.
-    """
-
-    prompt = await client.get_prompt("analyze_emotional_climate", {
-        "conversation_text": conversation,
-        "participants": "Alex, Lila"
-    })
-
-    llm = AsyncOpenAI()
-    analysis = await llm.chat.completions.create(
-        model="gpt-4",
-        messages=[{"role": "user", "content": prompt.messages[0].content}]
-    )
-
-    print(analysis.choices[0].message.content)
-```
-
 ---
 
 ### Error Handling
@@ -2163,37 +2188,6 @@ async with Client(mcp_server) as client:
     except Exception as e:
         print(f"Error fetching persona: {e}")
         return None
-```
-
-#### Handling Tool Failures
-
-**Pattern:**
-```python
-async with Client(mcp_server) as client:
-    try:
-        result = await client.call_tool("update_relationship_metrics", {
-            "persona1_id": "lila",
-            "persona2_id": "nonexistent",
-            "trust_delta": 0.5
-        })
-
-        data = json.loads(result.content[0].text)
-
-        if "error" in data:
-            print(f"Tool error: {data['error']}")
-            # Log error, notify user, or retry
-            return False
-
-        if data.get("success"):
-            print("Update successful!")
-            return True
-
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-        # Log for debugging
-        import traceback
-        traceback.print_exc()
-        return False
 ```
 
 #### Retry Logic for Transient Errors
@@ -2268,95 +2262,6 @@ target_ids = {"lila", "alex", "jordan", "taylor"}
 filtered = [p for p in data['personas'] if p['id'] in target_ids]
 ```
 
-#### Connection Pooling
-
-**Pattern:**
-```python
-from contextlib import asynccontextmanager
-
-class MCPClientPool:
-    """Maintain connection pool for MCP clients."""
-
-    def __init__(self, server_url: str, pool_size: int = 5):
-        self.server_url = server_url
-        self.pool_size = pool_size
-        self.clients = []
-
-    async def initialize(self):
-        """Create connection pool."""
-        for _ in range(self.pool_size):
-            client = Client(self.server_url)
-            await client.__aenter__()
-            self.clients.append(client)
-
-    async def close(self):
-        """Close all connections."""
-        for client in self.clients:
-            await client.__aexit__(None, None, None)
-
-    @asynccontextmanager
-    async def get_client(self):
-        """Get client from pool."""
-        if not self.clients:
-            raise RuntimeError("Pool not initialized")
-
-        client = self.clients.pop()
-        try:
-            yield client
-        finally:
-            self.clients.append(client)
-
-# Usage
-pool = MCPClientPool("http://localhost:8766/", pool_size=10)
-await pool.initialize()
-
-async with pool.get_client() as client:
-    personas = await client.read_resource("neo4j://personas/all")
-
-await pool.close()
-```
-
-#### Caching Frequent Reads
-
-**Pattern:**
-```python
-from datetime import datetime, timedelta
-from typing import Optional
-
-class MCPResourceCache:
-    """Simple time-based cache for MCP resources."""
-
-    def __init__(self, ttl_seconds: int = 60):
-        self.cache = {}
-        self.ttl = timedelta(seconds=ttl_seconds)
-
-    def get(self, key: str) -> Optional[dict]:
-        """Get cached value if not expired."""
-        if key in self.cache:
-            value, timestamp = self.cache[key]
-            if datetime.now() - timestamp < self.ttl:
-                return value
-        return None
-
-    def set(self, key: str, value: dict):
-        """Cache value with current timestamp."""
-        self.cache[key] = (value, datetime.now())
-
-# Usage
-cache = MCPResourceCache(ttl_seconds=30)
-
-async def get_personas_cached(client: Client) -> dict:
-    """Get personas with caching."""
-    cached = cache.get("personas_all")
-    if cached:
-        return cached
-
-    personas_json = await client.read_resource("neo4j://personas/all")
-    personas = json.loads(personas_json)
-    cache.set("personas_all", personas)
-    return personas
-```
-
 #### Parallel Tool Calls
 
 **Pattern:**
@@ -2400,9 +2305,9 @@ async with Client(mcp_server) as client:
 
 ---
 
-## Code Examples
+## Complete Working Examples
 
-### Complete Example: Interaction Recording and Analysis
+### Example 1: Interaction Recording and Analysis
 
 ```python
 """
@@ -2476,20 +2381,9 @@ async def process_interaction(
 
     print(f"✓ Emotional analysis:\n{analysis.choices[0].message.content[:300]}...\n")
 
-    # Step 4: Get current relationship status
-    print("Step 4: Current relationship status...")
-    rel_status = await client.read_resource(f"neo4j://relationships/{sender_id}/{recipient_id}")
-    rel_data = json.loads(rel_status)
-
-    relationship = rel_data['relationship']
-    print(f"✓ Type: {relationship['relationship_type']}")
-    print(f"✓ Total interactions: {relationship['interaction_count']}")
-    print(f"✓ Emotional valence: {relationship['emotional_valence']:.2f}")
-
     return {
         "interaction_id": interaction_data['interaction_id'],
-        "metrics": rel,
-        "relationship": relationship
+        "metrics": rel
     }
 
 async def main():
@@ -2501,7 +2395,7 @@ async def main():
 
     async with mcp_client as client:
         # Process a positive interaction
-        result1 = await process_interaction(
+        result = await process_interaction(
             client,
             llm_client,
             sender_id="lila",
@@ -2510,28 +2404,15 @@ async def main():
             emotional_valence=0.9
         )
 
-        # Process another interaction
-        result2 = await process_interaction(
-            client,
-            llm_client,
-            sender_id="alex",
-            recipient_id="lila",
-            message="I'm always here for you. We're in this together.",
-            emotional_valence=0.8
-        )
-
         print(f"\n{'='*60}")
-        print("Summary:")
+        print("Complete!")
         print(f"{'='*60}")
-        print(f"Processed {2} interactions")
-        print(f"Final trust level: {result2['metrics']['trust_level']:.2f}/10")
-        print(f"Total interactions: {result2['relationship']['interaction_count']}")
 
 if __name__ == "__main__":
     asyncio.run(main())
 ```
 
-### Complete Example: Compatibility Analysis and Strategy Selection
+### Example 2: Compatibility Analysis and Strategy Selection
 
 ```python
 """
@@ -2540,14 +2421,13 @@ Complete example: Analyze compatibility and select interaction strategies.
 import asyncio
 import json
 from fastmcp import Client
-from typing import Dict
 
 async def analyze_and_strategize(
     client: Client,
     persona1_id: str,
     persona2_id: str,
     relationship_type: str = "romantic"
-) -> Dict:
+):
     """Analyze compatibility and select optimal strategies."""
 
     print(f"\n{'='*60}")
@@ -2582,66 +2462,25 @@ async def analyze_and_strategize(
     for rec in compat['recommendations']:
         print(f"  • {rec}")
 
-    # Step 3: Select strategies for each persona
+    # Step 3: Select strategies
     print("\nStep 3: Selecting interaction strategies...")
 
-    # Strategy for persona1
     strategy1_result = await client.call_tool("autonomous_strategy_selection", {
         "persona_id": persona1_id,
-        "conversation_context": f"Building {relationship_type} relationship with {persona2['name']}",
+        "conversation_context": f"Building {relationship_type} relationship",
         "active_goals": "build trust, increase intimacy",
         "attachment_style": persona1['attachment_style']
     })
 
     strategy1 = json.loads(strategy1_result.content[0].text)['strategy_selection']
-
-    # Strategy for persona2
-    strategy2_result = await client.call_tool("autonomous_strategy_selection", {
-        "persona_id": persona2_id,
-        "conversation_context": f"Building {relationship_type} relationship with {persona1['name']}",
-        "active_goals": "build trust, increase intimacy",
-        "attachment_style": persona2['attachment_style']
-    })
-
-    strategy2 = json.loads(strategy2_result.content[0].text)['strategy_selection']
-
     print(f"✓ {persona1['name']}'s strategy: {strategy1['selected_strategy']}")
-    print(f"  Reasoning: {strategy1['reasoning']}")
-    print(f"\n✓ {persona2['name']}'s strategy: {strategy2['selected_strategy']}")
-    print(f"  Reasoning: {strategy2['reasoning']}")
 
-    # Step 4: Generate contextual responses
-    print("\nStep 4: Generating contextual responses...")
-
-    response1_result = await client.call_tool("generate_contextual_response", {
-        "persona_id": persona1_id,
-        "context": f"First deep conversation with {persona2['name']}",
-        "goals": "build trust, show vulnerability"
-    })
-
-    response1 = json.loads(response1_result.content[0].text)['contextual_response']
-
-    print(f"\n{persona1['name']}'s response:")
-    print(f'  "{response1["response"]}"')
-    print(f"  Strategy: {response1['strategy_used']}")
-
-    return {
-        "compatibility": compat,
-        "strategies": {
-            persona1_id: strategy1,
-            persona2_id: strategy2
-        },
-        "personas": {
-            persona1_id: persona1,
-            persona2_id: persona2
-        }
-    }
+    return {"compatibility": compat, "strategy": strategy1}
 
 async def main():
     """Main example execution."""
 
     async with Client("http://localhost:8766/") as client:
-        # Analyze secure-anxious pairing
         result = await analyze_and_strategize(
             client,
             persona1_id="lila",
@@ -2652,123 +2491,50 @@ async def main():
         print(f"\n{'='*60}")
         print("Analysis Complete!")
         print(f"{'='*60}")
-        print(f"Compatibility: {result['compatibility']['compatibility_level']}")
-        print(f"Strategies selected for both personas")
 
 if __name__ == "__main__":
     asyncio.run(main())
-```
-
-### Complete Example: Data Import and Validation
-
-```python
-"""
-Complete example: Import data and validate Neo4j setup.
-"""
-import asyncio
-from pathlib import Path
-from import_data import Neo4jDataImporter
-from fastmcp import Client
-
-async def setup_and_validate():
-    """Import data and validate MCP server."""
-
-    print(f"\n{'='*60}")
-    print("Lila MCP Data Import and Validation")
-    print(f"{'='*60}\n")
-
-    # Step 1: Import data
-    print("Step 1: Importing data to Neo4j...")
-    importer = Neo4jDataImporter(
-        uri="bolt://localhost:7687",
-        user="neo4j",
-        password="passw0rd",
-        max_retries=30
-    )
-
-    try:
-        # Load schema
-        schema_path = Path("graphs/lila-graph-schema-v8.json")
-        if schema_path.exists():
-            importer.load_schema(schema_path)
-        else:
-            print("⚠️  Schema file not found, creating default personas...")
-            importer.create_default_personas()
-
-        # Verify import
-        success = importer.verify_import()
-        if success:
-            print("✓ Data import successful!")
-        else:
-            print("⚠️  No data imported")
-            return False
-
-    finally:
-        importer.close()
-
-    # Step 2: Validate MCP server
-    print("\nStep 2: Validating MCP server...")
-
-    async with Client("http://localhost:8766/") as client:
-        # Test connectivity
-        await client.ping()
-        print("✓ Server is reachable")
-
-        # Test resources
-        personas = await client.read_resource("neo4j://personas/all")
-        personas_data = json.loads(personas)
-
-        if "error" in personas_data:
-            print(f"❌ Error: {personas_data['error']}")
-            return False
-
-        print(f"✓ Found {personas_data['count']} personas")
-
-        # Test relationships
-        rels = await client.read_resource("neo4j://relationships/all")
-        rels_data = json.loads(rels)
-        print(f"✓ Found {rels_data['count']} relationships")
-
-        # Test tools
-        tools = await client.list_tools()
-        print(f"✓ {len(tools)} tools available")
-
-        # Test prompts
-        prompts = await client.list_prompts()
-        print(f"✓ {len(prompts)} prompts available")
-
-    print(f"\n{'='*60}")
-    print("✅ Setup and validation complete!")
-    print(f"{'='*60}\n")
-
-    return True
-
-if __name__ == "__main__":
-    success = asyncio.run(setup_and_validate())
-    exit(0 if success else 1)
 ```
 
 ---
 
 ## Summary
 
-This API reference provides complete documentation for:
+This API reference provides complete documentation for the Lila MCP system:
 
-1. **Core Classes**: LilaMCPServer, SimpleLilaMCPServer, Neo4jDataImporter, Neo4jDataExporter
-2. **MCP Resources**: 5 read-only endpoints for personas, relationships, and interactions
-3. **MCP Tools**: 6 action-oriented endpoints for updates and analysis
-4. **MCP Prompts**: 3 templated prompts for LLM-based psychological assessments
-5. **Configuration**: Environment variables and configuration files
-6. **Best Practices**: Error handling, performance optimization, and usage patterns
-7. **Complete Examples**: Working code for common use cases
+**Server Implementations:**
+- **LilaMCPServer**: 5 resources, 6 tools, 3 prompts - Production-ready with Neo4j
+- **SimpleLilaMCPServer**: 9 resources, 8 tools, 3 prompts - Development/testing with mock data
 
-All APIs are production-ready and integrated with Neo4j for persistent psychological relationship modeling.
+**Key Features:**
+1. Comprehensive psychological relationship modeling
+2. Attachment-theory-based compatibility analysis
+3. Real-time relationship metric updates
+4. LLM-ready prompts for psychological assessment
+5. Graph database integration (Neo4j)
+6. FastMCP framework for MCP protocol support
 
-**Quick Links:**
+**Data Management:**
+- Neo4jDataImporter: Schema loading, data import, persona creation
+- Neo4jDataExporter: Data export, Cypher script generation
+
+**Configuration:**
+- Environment variables for all settings
+- FastMCP JSON configuration
+- Security, logging, and performance options
+
+**Best Practices:**
+- Error handling patterns
+- Performance optimization techniques
+- Retry logic and connection pooling
+- Complete working examples
+
+All APIs are production-ready and fully documented with examples, parameter descriptions, return types, and usage patterns.
+
+**Quick Reference Files:**
 - Main Server: `/home/donbr/lila-graph/lila-mcp/lila_mcp_server.py`
 - Simple Server: `/home/donbr/lila-graph/lila-mcp/simple_lila_mcp_server.py`
 - Data Import: `/home/donbr/lila-graph/lila-mcp/import_data.py`
 - Data Export: `/home/donbr/lila-graph/lila-mcp/export_data.py`
 - Configuration: `/home/donbr/lila-graph/lila-mcp/.env.example`
-- Project Config: `/home/donbr/lila-graph/lila-mcp/pyproject.toml`
 - FastMCP Config: `/home/donbr/lila-graph/lila-mcp/fastmcp.json`
