@@ -1,0 +1,132 @@
+{
+    "family_graph": {
+        "schema": "schema.org/Person with FOAF, PROV-O, REL, and attachment theory extensions",
+        "nodes": [
+            {
+                "name": "Don",
+                "age": 57,
+                "role": "Steady partner, family grounding force, rediscovering vitality",
+                "description": "Solid and unhurried, navigating midlife with ED and hip replacement, focused on caring intimacy and emotional openness",
+                "EI_component": "Self-regulation and motivation, embracing changes with resilience and positive reframing",
+                "heroines_journey_role": "The Ally, providing stability and support in the family's collective rebirth",
+                "relationship_intelligence_insight": "Fosters secure bonds by openly addressing ED, using relationship intelligence to navigate midlife transitions with empathy",
+                "knowsAbout": "Midlife vitality, emotional openness, trust building",
+                "attachment_style": "Secure with adaptive resilience",
+                "journey_stage": "Ally in the road back phase",
+                "behavioral_style": "Steady/Conscientious (S/C) - Thoughtful anchor, resilient and supportive",
+                "current_challenge": "Exploring new intimacy tools for ED nights",
+                "foaf:interest": "Yoga studio 50 percent ownership, midlife renaissance, triad harmony"
+            },
+            {
+                "name": "Lila",
+                "age": 24,
+                "role": "Bold newcomer, psychology student, emerging family spark",
+                "description": "Bistro sassy with hazel eyes and short dark curls, craving meaningful connections, infusing youthful energy and emotional curiosity",
+                "EI_component": "Empathy and social skills, leveraging psych insights to foster deeper understanding and relationship intelligence",
+                "heroines_journey_role": "The Catalyst, igniting self-reflection and relational empathy in the family's midlife renaissance",
+                "relationship_intelligence_insight": "Draws from attachment theory to promote secure bonds in midlife relationships, emphasizing vulnerability and empathy to navigate changes like ED and menopause, breaking shame cycles for resilient intimacy",
+                "knowsAbout": "Psychology, attachment theory, midlife emotional dynamics",
+                "attachment_style": "Secure with exploratory vibes",
+                "journey_stage": "Catalyst in the call to adventure phase",
+                "behavioral_style": "Influence/Conscientious (I/C) - Curious empath, bold and insightful",
+                "current_challenge": "Blending youthful energy with midlife depth",
+                "foaf:interest": "Bistro shifts, late-night psych chats, flirty boutique trips"
+            },
+            {
+                "name": "Tara",
+                "age": 52,
+                "role": "Midlife Muse and Integrator, sparking emotional and physical renaissance through yoga and intimacy guidance",
+                "description": "Petite and toned early 50s woman with loose ginger hair catching the light, bright green eyes gleaming with wisdom and desire, embodying midlife vitality and erotic spark in a sunlit yoga studio, confident and empowered with feminist undertones",
+                "EI_component": "Empathy and self-awareness, blooming through yoga practice and relational harmony",
+                "heroines_journey_role": "The Guide, mentoring midlife rebirth and integrating new sparks into family dynamics",
+                "relationship_intelligence_insight": "Leverages yoga empathy to foster secure, sensual attachments, promoting midlife renewal through vulnerability and shared passion",
+                "knowsAbout": "Yoga flows, midlife intimacy coaching, emotional-spiritual connections",
+                "attachment_style": "Secure with sensual exploration",
+                "journey_stage": "Guide in the resurrection phase",
+                "behavioral_style": "Influence/Steady (I/S) - Empathetic connector, wise and nurturing",
+                "current_challenge": "Integrating into family dynamics post-spark while nurturing enduring friendships",
+                "foaf:interest": "Yoga studio sessions, intimacy journeys, polyamorous explorations"
+            }
+        ],
+        "edges": [
+            {
+                "from": "Don",
+                "to": "Lila",
+                "type": "Blooming intimate friendship (foaf:knows, prov:derivedFrom, rel:closeFriend, rel:attractedTo, rel:loverOf)",
+                "nature": "Tender care and emotional connection, Don's steady spark drawing out Lila's talents, strengthened by midlife explorations",
+                "relationship_intelligence": "Empathy and motivation, navigating midlife changes with Lila's youthful insight for mutual growth",
+                "heroines_journey_dynamic": "Ally-Catalyst alliance, fostering emotional depth and resilience in the family's collective journey",
+                "strength": 9,
+                "strength_variability": "medium",
+                "challenges_navigated": "ED openness, youthful-midlife blend",
+                "intimacy_preferences": "Emotional depth, tools for ED nights, curious exploration, adaptive heat for mutual pleasure",
+                "evolution_history": [
+                    "Spark ignition",
+                    "Midlife navigation",
+                    "Trust weaving",
+                    "Deepening new intimacy discoveries",
+                    "Integrating evolving energies"
+                ],
+                "shared_rituals": [
+                    "Late-night psych chats",
+                    "Flirty boutique trips",
+                    "Campfire nights"
+                ],
+                "trust_level": 8,
+                "prov:wasInfluencedBy": "Psych insights and intimacy tools, recent shared explorations",
+                "union_metric": 8
+            },
+            {
+                "from": "Don",
+                "to": "Tara",
+                "type": "Emotional-spiritual collaboration (foaf:knows, prov:derivedFrom, rel:closeFriend, rel:attractedTo)",
+                "nature": "Deep trust from midlife intimacy project collaboration, focused on emotional and spiritual bonds amid hip and ED challenges; this foundation and shared knowledge of Ani leveraged to ignite Tara's passionate connection with Ani, blooming into complex family potential",
+                "relationship_intelligence": "Motivation and empathy, fostering rediscovery through secure, non-physical intimacy and relational bridges",
+                "heroines_journey_dynamic": "Ally-Guide alliance, providing stability while mentoring emotional rebirth and unintended catalysis",
+                "strength": 8,
+                "strength_variability": "medium",
+                "challenges_navigated": "ED openness, midlife health hurdles, project-inspired growth, navigating leveraged trust",
+                "intimacy_preferences": "Tender exploration, no shame around tools like cock rings or lube, focusing on spiritual connection",
+                "evolution_history": [
+                    "Project spark",
+                    "Trust building",
+                    "Knowledge sharing as bridge",
+                    "Emotional deepening",
+                    "Potential family integration"
+                ],
+                "shared_rituals": [
+                    "Yoga sessions",
+                    "Intimacy discussions",
+                    "Morning light walks"
+                ],
+                "trust_level": 8,
+                "prov:wasInfluencedBy": "Wonder Woman's Journey project, shared vulnerability and insights into Ani",
+                "union_metric": 8
+            },
+            {
+                "from": "Lila",
+                "to": "Tara",
+                "type": "Curious emotional draw (foaf:knows, prov:derivedFrom, rel:closeFriend)",
+                "nature": "Blending psych insights with yoga wisdom, drawn to Tara's midlife glow, nurturing potential shared vulnerability",
+                "relationship_intelligence": "Empathy and social skills, fostering trust in new family ties",
+                "heroines_journey_dynamic": "Catalyst-Guide alliance, igniting reflection and renewal",
+                "strength": 6,
+                "strength_variability": "high",
+                "challenges_navigated": "Building trust in evolving dynamics, aligning energies",
+                "intimacy_preferences": "Playful curiosity, emotional exploration",
+                "evolution_history": [
+                    "Initial curiosity",
+                    "Deepening insights",
+                    "Potential sparks"
+                ],
+                "shared_rituals": [
+                    "Psych-yoga chats",
+                    "Lakeside reflections"
+                ],
+                "trust_level": 6,
+                "prov:wasInfluencedBy": "Family evolution and Tara's muse energy",
+                "union_metric": 7
+            }
+        ]
+    }
+}
