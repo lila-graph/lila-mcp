@@ -1,1559 +1,872 @@
 # Component Inventory
 
-**Repository**: lila-mcp (Lila Psychological Intelligence MCP Server)
-**Analysis Date**: 2025-10-03
-**Location**: /home/donbr/lila-graph/lila-mcp
+## Overview
 
-## Executive Summary
+This document provides a comprehensive inventory of all Python modules, classes, and functions in the Lila MCP codebase. Components are categorized by their visibility (public API vs internal implementation) and role in the system.
 
-This repository implements a standalone MCP (Model Context Protocol) server providing psychological intelligence capabilities. The system integrates Neo4j graph database for persona and relationship modeling, implements attachment theory and Big Five personality models, and exposes psychological analysis tools through the FastMCP framework.
-
-**Key Statistics**:
-- 6 Python modules (excluding tests)
-- 2 main server implementations (full and simplified)
-- 8 MCP tools for psychological operations
-- 3 MCP prompts for psychological assessment
-- 9 MCP resources (2 direct + 7 templated)
-- Neo4j database integration with retry logic
-- FastMCP framework for MCP protocol implementation
+**Project**: Lila MCP - Multi-domain agent orchestration system with psychological relationship modeling
+**Last Updated**: 2025-10-03
 
 ---
 
 ## Public API
 
-### 1. MCP Server Modules
+### MCP Servers
 
-#### 1.1 `lila_mcp_server.py` - Full MCP Server Implementation
-**Purpose**: Complete production MCP server with Neo4j integration and comprehensive psychological intelligence features.
+#### 1. LilaMCPServer
+**File**: `lila_mcp_server.py:29`
 
-**Location**: `/home/donbr/lila-graph/lila-mcp/lila_mcp_server.py`
+**Purpose**: FastMCP server exposing Lila's psychological relationship data and tools with Neo4j integration.
 
-**Key Classes**:
+**Key Methods**:
+- `__init__(self)` - Initialize MCP server with Neo4j connection (`lila_mcp_server.py:32`)
+- `_setup_database(self)` - Initialize Neo4j database connection (`lila_mcp_server.py:46`)
+- `close(self)` - Close Neo4j connection (`lila_mcp_server.py:64`)
+- `run_server(self, host: str, port: int)` - Run the MCP server (`lila_mcp_server.py:756`)
 
-##### `LilaMCPServer` (lines 29-762)
-- **Purpose**: Main MCP server class exposing Lila's psychological relationship data and tools
-- **Initialization** (lines 32-44): Sets up FastMCP app, Neo4j connection, and registers all MCP endpoints
-- **Database Setup** (lines 46-62): Establishes Neo4j connection with error handling
+**Resources** (Neo4j-backed):
+- `neo4j://personas/all` - Retrieve all personas with psychological profiles (`lila_mcp_server.py:72`)
+- `neo4j://personas/{persona_id}` - Retrieve specific persona by ID (`lila_mcp_server.py:116`)
+- `neo4j://relationships/all` - Retrieve all relationship data (`lila_mcp_server.py:163`)
+- `neo4j://relationships/{persona1_id}/{persona2_id}` - Get specific relationship metrics (`lila_mcp_server.py:208`)
+- `neo4j://interactions/recent/{count}` - Get recent interactions (`lila_mcp_server.py:255`)
 
-**Public Methods**:
-- `close()` (lines 64-67): Close Neo4j database connection
-- `run_server(host, port)` (lines 756-762): Start the MCP server with SSE transport
+**Tools** (Async):
+- `update_relationship_metrics()` - Update trust/intimacy/strength between personas (`lila_mcp_server.py:301`)
+- `record_interaction()` - Record interaction with psychological analysis (`lila_mcp_server.py:363`)
+- `analyze_persona_compatibility()` - Assess relationship potential based on attachment styles (`lila_mcp_server.py:402`)
+- `autonomous_strategy_selection()` - AI-driven strategy selection based on attachment theory (`lila_mcp_server.py:464`)
+- `assess_goal_progress()` - Assess progress toward relationship goals (`lila_mcp_server.py:516`)
+- `generate_contextual_response()` - Generate psychologically authentic responses (`lila_mcp_server.py:555`)
 
-**MCP Resources** (5 resources exposed via Neo4j):
-1. `neo4j://personas/all` (lines 72-114): Retrieve all personas with psychological profiles
-   - Returns: JSON with personas array, count, and timestamp
-   - Includes: persona_id, name, age, role, attachment_style, Big Five traits
+**Prompts**:
+- `assess_attachment_style()` - Determine attachment style from behavioral observations (`lila_mcp_server.py:614`)
+- `analyze_emotional_climate()` - Evaluate conversation emotional dynamics (`lila_mcp_server.py:646`)
+- `generate_secure_response()` - Create attachment-security-building responses (`lila_mcp_server.py:697`)
 
-2. `neo4j://personas/{persona_id}` (lines 116-161): Get specific persona by ID
-   - Parameters: `persona_id` (string)
-   - Returns: Full persona profile with description, trust_level, communication_style
-
-3. `neo4j://relationships/all` (lines 163-206): Get all relationships with metrics
-   - Returns: Relationships array with trust_level, intimacy_level, relationship_strength
-   - Ordered by: relationship_strength DESC
-
-4. `neo4j://relationships/{persona1_id}/{persona2_id}` (lines 208-253): Specific relationship metrics
-   - Parameters: `persona1_id`, `persona2_id` (strings)
-   - Returns: Bidirectional relationship with timestamps and emotional_valence
-
-5. `neo4j://interactions/recent/{count}` (lines 255-295): Recent interaction history
-   - Parameters: `count` (string, max 50)
-   - Returns: Recent interactions with emotional_valence and relationship_type
-
-**MCP Tools** (6 tools for psychological operations):
-
-1. `update_relationship_metrics()` (lines 301-360): Update trust, intimacy, and strength
-   - **Parameters**:
-     - `persona1_id` (str): First persona identifier
-     - `persona2_id` (str): Second persona identifier
-     - `trust_delta` (float, default 0.0): Trust level change
-     - `intimacy_delta` (float, default 0.0): Intimacy level change
-     - `strength_delta` (float, default 0.0): Relationship strength change
-   - **Returns**: JSON with updated metrics (bounded 0-10) and delta values
-   - **Features**: Automatic bounds checking, bidirectional updates, timestamp tracking
-
-2. `record_interaction()` (lines 363-399): Record interaction with emotional analysis
-   - **Parameters**:
-     - `sender_id` (str): Sender persona ID
-     - `recipient_id` (str): Recipient persona ID
-     - `content` (str): Interaction content
-     - `emotional_valence` (float, default 0.0): Emotional tone (-1 to 1)
-     - `relationship_impact` (float, default 0.0): Impact on relationship
-   - **Returns**: Interaction ID and recorded metadata
-   - **Features**: Generates unique interaction ID, updates last_interaction timestamp, calculates rolling average emotional_valence
-
-3. `analyze_persona_compatibility()` (lines 402-461): Assess relationship potential
-   - **Parameters**:
-     - `persona1_id` (str): First persona ID
-     - `persona2_id` (str): Second persona ID
-     - `relationship_type` (str, default "romantic"): Type of relationship
-   - **Returns**: Compatibility analysis with level, reasoning, and recommendations
-   - **Features**: Uses attachment theory compatibility matrix
-   - **Matrix** (lines 424-431):
-     - secure + secure: High compatibility
-     - secure + anxious: Good (secure provides reassurance)
-     - secure + avoidant: Moderate (gradual opening)
-     - anxious + anxious: Challenging (emotional intensity)
-     - anxious + avoidant: Difficult (pursue-withdraw dynamic)
-     - avoidant + avoidant: Low (mutual avoidance)
-
-4. `autonomous_strategy_selection()` (lines 464-513): AI-driven strategy selection
-   - **Parameters**:
-     - `persona_id` (str): Persona making the decision
-     - `conversation_context` (str, default ""): Current conversation context
-     - `situation_assessment` (str, default ""): Situation analysis
-     - `active_goals` (str, default ""): Current goals
-     - `attachment_style` (str, default "secure"): Persona's attachment style
-   - **Returns**: Selected strategy with reasoning and available alternatives
-   - **Strategy Mapping** (lines 474-479):
-     - secure: emotional_bonding, vulnerable_disclosure, supportive_listening, trust_building
-     - anxious: reassurance_seeking, emotional_validation, secure_bonding, safety_creation
-     - avoidant: autonomous_connection, thoughtful_presence, respectful_distance, gradual_opening
-     - exploratory: growth_oriented_support, playful_engagement, curious_exploration, authentic_expression
-
-5. `assess_goal_progress()` (lines 516-552): Assess relationship goal progress
-   - **Parameters**:
-     - `persona_id` (str): Persona being assessed
-     - `goals` (str, default ""): Comma-separated goals
-     - `recent_interactions` (str, default ""): Recent interaction summary
-   - **Returns**: Progress assessment for each goal with overall progress score
-   - **Progress Calculation**: Based on goal keywords (trust, intimacy, vulnerability)
-
-6. `generate_contextual_response()` (lines 555-608): Generate persona-appropriate responses
-   - **Parameters**:
-     - `persona_id` (str): Persona generating response
-     - `context` (str): Situation context
-     - `goals` (str, default ""): Response goals
-     - `constraints` (str, default ""): Response constraints
-   - **Returns**: Psychologically authentic response with strategy and rationale
-   - **Response Styles** (lines 582-593):
-     - secure: Direct, supportive communication
-     - anxious: Reassurance-seeking, validating
-     - avoidant: Thoughtful, measured responses
-
-**MCP Prompts** (3 assessment prompts):
-
-1. `assess_attachment_style()` (lines 614-643): Determine attachment style from behavior
-   - **Parameters**:
-     - `persona_id` (str): Persona being assessed
-     - `observation_period` (str, default "recent"): Timeframe for observations
-     - `behavioral_examples` (str, default ""): Specific behavioral examples
-   - **Returns**: Comprehensive assessment framework prompt
-   - **Includes**: Four attachment styles (secure, anxious, avoidant, exploratory), five analysis dimensions, therapeutic implications
-
-2. `analyze_emotional_climate()` (lines 646-694): Evaluate emotional dynamics
-   - **Parameters**:
-     - `conversation_text` (str, default ""): Conversation content
-     - `interaction_id` (str, default ""): Interaction identifier
-     - `participants` (str, default ""): Participant names/IDs
-   - **Returns**: Emotional climate assessment framework
-   - **Assessment Areas**: Safety level (1-10), emotional attunement, communication quality, power dynamics, attachment activation
-
-3. `generate_secure_response()` (lines 697-739): Create security-building responses
-   - **Parameters**:
-     - `scenario_description` (str): Situation description
-     - `personas` (str): Involved personas
-     - `insecurity_triggers` (str, default ""): Known triggers
-     - `growth_goals` (str, default ""): Relationship goals
-   - **Returns**: Response generation framework with secure attachment principles
-   - **Principles**: Emotional safety first, attunement, secure base behaviors, repair and growth
-
-**Health Check Endpoint** (lines 741-754):
-- **Route**: `/health` (HTTP GET)
-- **Purpose**: Container orchestration health monitoring
-- **Returns**: JSON with status, service name, and Neo4j connection state
-- **Status Code**: 200
-
-**Module-Level Exports** (lines 764-779):
-- `_server_instance` (line 765): Global LilaMCPServer instance for CLI discovery
-- `mcp` (line 766): FastMCP app reference (FastMCP looks for 'mcp', 'server', or 'app')
-- `main()` (lines 768-776): Async entry point with logging setup and server startup
+**Entry Point**: `main()` at `lila_mcp_server.py:768` (async)
 
 ---
 
-#### 1.2 `simple_lila_mcp_server.py` - Simplified MCP Server
-**Purpose**: Development-friendly MCP server with mock data for testing without Neo4j dependency.
+#### 2. SimpleLilaMCPServer
+**File**: `simple_lila_mcp_server.py:33`
 
-**Location**: `/home/donbr/lila-graph/lila-mcp/simple_lila_mcp_server.py`
+**Purpose**: Simplified MCP server with mock data for testing and development. Same interface as LilaMCPServer but uses in-memory mock data instead of Neo4j.
 
-**Key Classes**:
+**Key Differences**:
+- Uses `self.mock_personas`, `self.mock_relationships`, `self.mock_interactions` (`simple_lila_mcp_server.py:42-92`)
+- Mock data includes Lila and Don personas with predefined psychological profiles
+- Same resource/tool/prompt interface as full server
+- Additional resources: `neo4j://emotional_climate/current`, `neo4j://attachment_styles/analysis`, `neo4j://goals/active`, `neo4j://psychological_insights/trends` (`simple_lila_mcp_server.py:270-358`)
+- Additional tools: `commit_relationship_state()`, `finalize_demo_session()` (`simple_lila_mcp_server.py:610-631`)
 
-##### `SimpleLilaMCPServer` (lines 33-823)
-- **Purpose**: Simplified server with in-memory mock data for development/testing
-- **Initialization** (lines 36-100): Creates FastMCP app with mock personas and relationships
-- **Debug Logging** (lines 27-29): Enables FastMCP and module debug logging
-
-**Mock Data Structures**:
-
-1. `mock_personas` (lines 42-71): Pre-configured persona dictionary
-   - **Lila**: Age 28, Psychological Intelligence Agent, secure attachment
-     - Personality: High openness (0.8), agreeableness (0.85), low neuroticism (0.3)
-   - **Don**: Age 45, Software Developer, anxious attachment
-     - Personality: High conscientiousness (0.8), moderate neuroticism (0.6)
-
-2. `mock_relationships` (lines 73-80): Relationship metrics dictionary
-   - Key: Tuple of (persona1_id, persona2_id)
-   - Values: trust_level (7.5), intimacy_level (6.8), relationship_strength (7.2)
-
-3. `mock_interactions` (lines 82-92): Interaction history list
-   - Sample interaction with ID, content, emotional_valence, timestamp
-
-**Database Setup** (lines 102-118):
-- Attempts Neo4j connection but continues without failure
-- Falls back to mock data if connection fails
-
-**Additional Resources** (beyond full server):
-
-4. `neo4j://emotional_climate/current` (lines 271-289): Current emotional climate
-   - Returns: overall_climate (safety, positivity, authenticity, growth_potential)
-   - Includes: risk_factors and strengths arrays
-
-5. `neo4j://attachment_styles/analysis` (lines 291-308): Attachment compatibility
-   - Returns: compatibility_matrix with scores and recommendations
-   - Example: lila_don pairing with 7.8 overall score
-
-6. `neo4j://goals/active` (lines 310-331): Active relationship goals
-   - Returns: Array of goals with progress, strategies, and completion_rate
-
-7. `neo4j://psychological_insights/trends` (lines 333-358): Psychological trends
-   - Returns: trust_evolution, intimacy_development, attachment_security trends
-   - Includes: predictions for next month and quarter
-
-**Modified Tool Implementations**:
-
-All tools from full server plus:
-
-7. `commit_relationship_state()` (lines 610-619): Mock state persistence
-   - **Parameters**: `persona1_id`, `persona2_id`
-   - **Returns**: Success confirmation with timestamp
-   - **Purpose**: Simulate explicit state commits for CQRS pattern
-
-8. `finalize_demo_session()` (lines 622-631): Session finalization
-   - **Parameters**: None
-   - **Returns**: Count of committed relationships and timestamp
-   - **Purpose**: Batch finalization for demo sessions
-
-**Simplified Tool Logic**:
-- Tools use in-memory data structures instead of database queries
-- Automatic creation of relationships on first update
-- Immediate state updates without transactions
-
-**Module Export** (line 825):
-- `mcp = SimpleLilaMCPServer().app`: FastMCP CLI discovery
+**Module Export**: `mcp = SimpleLilaMCPServer().app` for FastMCP CLI discovery (`simple_lila_mcp_server.py:825`)
 
 ---
 
-### 2. Data Management Modules
+### Orchestrator Framework
 
-#### 2.1 `import_data.py` - Neo4j Data Import Utility
-**Purpose**: Import seed data and schema into Neo4j for MCP server initialization.
+#### 3. BaseOrchestrator (Abstract Base Class)
+**File**: `orchestrators/base_orchestrator.py:26`
 
-**Location**: `/home/donbr/lila-graph/lila-mcp/import_data.py`
+**Purpose**: Base class for domain-specific orchestrators providing common workflow patterns.
 
-**Key Classes**:
+**Core Features**:
+- Phase execution and management
+- Agent lifecycle management
+- Output directory structure
+- Progress tracking and visualization
+- Cost tracking and reporting
+- Verification and checkpointing
+- Error handling and recovery
 
-##### `Neo4jDataImporter` (lines 22-407)
-- **Purpose**: Import psychological intelligence data and schema into Neo4j
-- **Initialization** (lines 25-32): Connect with retry logic for container startup delays
+**Constructor Parameters**:
+- `domain_name: str` - Name of the domain (e.g., 'architecture', 'ux')
+- `output_base_dir: Path` - Base directory for outputs (default: `Path("outputs")`)
+- `show_tool_details: bool` - Whether to display tool usage (default: `True`)
 
-**Connection Management**:
+**Key Methods**:
+- `create_output_structure(subdirs)` - Create output directory structure (`base_orchestrator.py:62`)
+- `display_message(msg, show_tools)` - Display message with tool usage visibility (`base_orchestrator.py:74`)
+- `display_phase_header(phase_number, phase_name, emoji)` - Display formatted phase header (`base_orchestrator.py:117`)
+- `track_phase_cost(phase_name, cost)` - Track cost for specific phase (`base_orchestrator.py:129`)
+- `mark_phase_complete(phase_name)` - Mark phase as completed (`base_orchestrator.py:139`)
+- `verify_outputs(expected_files)` - Verify all expected outputs created (`base_orchestrator.py:147`)
+- `display_summary()` - Display orchestrator run summary (`base_orchestrator.py:172`)
+- `execute_phase(phase_name, agent_name, prompt, client)` - Execute single phase (`base_orchestrator.py:216`)
+- `create_client_options(permission_mode, cwd)` - Create Claude SDK client options (`base_orchestrator.py:242`)
+- `run_with_client()` - Run orchestrator with automatic client setup/teardown (`base_orchestrator.py:266`)
 
-1. `_connect_with_retry()` (lines 34-49): Robust connection with retry logic
-   - **Max Retries**: 30 attempts
-   - **Retry Delay**: 2 seconds between attempts
-   - **Purpose**: Handle Neo4j container startup delays
-   - **Error Handling**: Raises exception after max attempts
-
-2. `close()` (lines 51-54): Clean database connection closure
-
-**Data Management Methods**:
-
-3. `clear_database()` (lines 56-61): Remove all existing data
-   - **Query**: `MATCH (n) DETACH DELETE n`
-   - **Purpose**: Clean slate for import
-
-4. `load_schema(schema_path)` (lines 63-121): Load constraints, indexes, and data
-   - **Parameters**: `schema_path` (Path) - JSON schema file
-   - **Constraints Created** (lines 77-90):
-     - PersonaAgent: unique persona_id, unique name
-     - Memory: unique memory_id
-     - Goal: unique goal_id
-   - **Indexes Created** (lines 93-98):
-     - PersonaAgent.attachment_style
-     - Memory.memory_type
-     - Goal.goal_type
-     - RELATIONSHIP.relationship_type
-   - **Data Loading**: Calls `_load_family_graph_data()` for persona import
-
-5. `_load_family_graph_data(schema, session)` (lines 122-237): Import personas and relationships
-   - **Source**: family_graph.nodes and family_graph.edges from JSON schema
-   - **Persona Creation** (lines 135-195):
-     - Maps behavioral_style to Big Five traits
-     - Parses attachment_style (secure, anxious, avoidant)
-     - Sets default communication_style based on behavioral traits
-     - Creates PersonaAgent nodes with full psychological profiles
-   - **Relationship Creation** (lines 197-237):
-     - Creates bidirectional RELATIONSHIP edges
-     - Maps relationship_type (intimate, friendship)
-     - Normalizes union_metric to emotional_valence (0-1 scale)
-     - Sets default interaction_count to 0
-
-6. `_map_behavioral_to_bigfive(behavioral_style)` (lines 239-280): DISC to Big Five mapping
-   - **Input**: DISC behavioral style string (e.g., "DI", "SC")
-   - **Output**: Dictionary with Big Five traits (0-1 scale)
-   - **Mapping Logic**:
-     - D (Dominance): +extraversion, +openness, -agreeableness
-     - I (Influence): +extraversion, +openness, +agreeableness
-     - S (Steadiness): +agreeableness, +conscientiousness, -neuroticism
-     - C (Conscientiousness): +conscientiousness, +openness, +neuroticism
-   - **Normalization**: All values clamped to [0.0, 1.0]
-
-7. `import_seed_data(seed_data_path)` (lines 282-310): Import Cypher statements
-   - **Parameters**: `seed_data_path` (Path) - Cypher script file
-   - **Processing**: Splits on semicolons, skips comments
-   - **Progress**: Reports every 10 statements
-   - **Error Handling**: Logs individual statement failures but continues
-
-8. `create_default_personas()` (lines 312-377): Create fallback personas
-   - **Personas Created**:
-     - **Lila** (lines 317-331): AI Research Assistant, age 28, secure attachment
-       - High openness (0.85), agreeableness (0.90), low neuroticism (0.25)
-       - Communication style: empathetic
-     - **Alex** (lines 332-346): Software Engineer, age 32, secure attachment
-       - High conscientiousness (0.85), moderate extraversion (0.60)
-       - Communication style: analytical
-   - **Relationship** (lines 364-375): Friendship with moderate metrics
-     - trust_level: 0.70, intimacy_level: 0.60, relationship_strength: 0.65
-     - interaction_count: 5, relationship_type: friendship, emotional_valence: 0.75
-
-9. `verify_import()` (lines 379-406): Verify successful import
-   - **Counts**:
-     - PersonaAgent nodes
-     - RELATIONSHIP edges
-     - Memory nodes
-     - Goal nodes
-   - **Returns**: Boolean indicating personas exist
-   - **Output**: Formatted verification report
-
-**CLI Interface** (lines 409-466):
-
-```bash
-python import_data.py \
-  --seed-data seed_data.cypher \
-  --schema graphs/lila-graph-schema-v8.json \
-  --uri bolt://localhost:7687 \
-  --user neo4j \
-  --password passw0rd \
-  --create-defaults
-```
-
-**Arguments**:
-- `--seed-data` (line 412): Cypher file path (default: seed_data.cypher)
-- `--schema` (line 414): JSON schema path (default: graphs/lila-graph-schema-v8.json)
-- `--uri` (line 416): Neo4j connection URI (default: bolt://localhost:7687)
-- `--user` (line 418): Database username (default: neo4j)
-- `--password` (line 420): Database password (supports NEO4J_PASSWORD env var)
-- `--create-defaults` (line 422): Create default personas if no seed data
-
-**Main Function** (lines 409-463):
-1. Parse arguments
-2. Initialize importer with retry logic
-3. Load schema (constraints, indexes, personas)
-4. Import seed data or create defaults
-5. Verify import success
-6. Report results with emoji indicators
+**Abstract Methods** (must be implemented by subclasses):
+- `get_agent_definitions()` - Return dict of AgentDefinition objects (`base_orchestrator.py:190`)
+- `get_allowed_tools()` - Return list of allowed tool names (`base_orchestrator.py:199`)
+- `run()` - Execute the orchestrator workflow (`base_orchestrator.py:208`)
 
 ---
 
-#### 2.2 `export_data.py` - Neo4j Data Export Utility
-**Purpose**: Export persona and relationship data from Neo4j for backup/migration.
+#### 4. ArchitectureOrchestrator
+**File**: `orchestrators/architecture_orchestrator.py:20`
 
-**Location**: `/home/donbr/lila-graph/lila-mcp/export_data.py`
+**Purpose**: Orchestrator for comprehensive repository architecture analysis.
 
-**Key Classes**:
+**Inherits**: `BaseOrchestrator`
 
-##### `Neo4jDataExporter` (lines 21-243)
-- **Purpose**: Export psychological intelligence data to Cypher format
+**Output Structure**:
+- `docs/` - Analysis documentation
+- `diagrams/` - Architecture diagrams
+- `reports/` - Summary reports
 
-**Connection Management**:
-- `__init__(uri, user, password)` (lines 24-26): Initialize Neo4j driver
-- `close()` (lines 28-30): Close connection
+**Agents**:
+- `analyzer` - Analyzes code structure, patterns, architecture (`architecture_orchestrator.py:62`)
+  - Tools: `["Read", "Grep", "Glob", "Write", "Bash"]`
+  - Model: `sonnet`
+- `doc-writer` - Writes comprehensive technical documentation (`architecture_orchestrator.py:80`)
+  - Tools: `["Read", "Write", "Grep", "Glob"]`
+  - Model: `sonnet`
 
-**Export Methods**:
+**Allowed Tools**: `["Read", "Write", "Grep", "Glob", "Bash"]` (`architecture_orchestrator.py:109`)
 
-1. `export_personas()` (lines 32-62): Export all PersonaAgent nodes
-   - **Query**: Returns all persona properties including psychological profiles
-   - **Fields**: persona_id, name, age, role, description, attachment_style
-   - **Traits**: Big Five (openness, conscientiousness, extraversion, agreeableness, neuroticism)
-   - **Additional**: trust_level, relationship_history, communication_style, timestamps
-   - **Returns**: List of persona dictionaries
+**Workflow Phases**:
+1. `phase_1_component_inventory()` - Generate component inventory (`architecture_orchestrator.py:111`)
+2. `phase_2_architecture_diagrams()` - Generate architecture diagrams (`architecture_orchestrator.py:144`)
+3. `phase_3_data_flows()` - Document data flows (`architecture_orchestrator.py:183`)
+4. `phase_4_api_documentation()` - Generate API documentation (`architecture_orchestrator.py:220`)
+5. `phase_5_synthesis()` - Create final synthesis document (`architecture_orchestrator.py:241`)
 
-2. `export_relationships()` (lines 64-89): Export relationship edges
-   - **Query**: Returns all RELATIONSHIP properties between PersonaAgent nodes
-   - **Fields**: persona1_id, persona2_id, trust_level, intimacy_level, relationship_strength
-   - **Metrics**: interaction_count, last_interaction, relationship_type, emotional_valence
-   - **Timestamps**: created_at, updated_at
-   - **Returns**: List of relationship dictionaries
-
-3. `export_memories()` (lines 91-113): Export memory nodes
-   - **Query**: Returns memories with HAS_MEMORY relationships
-   - **Fields**: persona_id, memory_id, content, memory_type
-   - **Metrics**: importance_score, emotional_valence, participants
-   - **Timestamp**: created_at
-   - **Returns**: List of memory dictionaries
-
-4. `export_goals()` (lines 115-139): Export goal nodes
-   - **Query**: Returns goals with HAS_GOAL relationships
-   - **Fields**: persona_id, goal_id, goal_type, description
-   - **Progress**: progress score, target_persona, priority, status
-   - **Timestamps**: created_at, updated_at
-   - **Returns**: List of goal dictionaries
-
-5. `generate_cypher_script(personas, relationships, memories, goals)` (lines 141-242): Generate import script
-   - **Purpose**: Create self-contained Cypher file for data import
-   - **Header** (lines 145-152): Comment block with clear command and section headers
-   - **Persona Generation** (lines 155-170):
-     - Converts persona dictionaries to CREATE statements
-     - Handles None values and type conversions
-     - Escapes quotes and newlines in strings
-     - Generates property lists for node creation
-   - **Relationship Generation** (lines 172-194):
-     - Creates MATCH-CREATE pattern for relationships
-     - Finds both personas by persona_id
-     - Builds relationship property map
-     - Handles bidirectional relationships
-   - **Memory Generation** (lines 196-217):
-     - Creates HAS_MEMORY relationships
-     - Links memories to personas
-     - Includes all memory properties
-   - **Goal Generation** (lines 219-240):
-     - Creates HAS_GOAL relationships
-     - Links goals to personas
-     - Includes progress and status tracking
-   - **Returns**: Complete Cypher script as string
-
-**CLI Interface** (lines 245-295):
-
-```bash
-python export_data.py \
-  --output seed_data.cypher \
-  --uri bolt://localhost:7687 \
-  --user neo4j \
-  --password passw0rd
-```
-
-**Arguments**:
-- `--output` (line 248): Output file path (default: seed_data.cypher)
-- `--uri` (line 250): Neo4j URI (default: bolt://localhost:7687)
-- `--user` (line 252): Username (default: neo4j)
-- `--password` (line 254): Password (supports NEO4J_PASSWORD env var)
-
-**Main Function** (lines 245-291):
-1. Parse command-line arguments
-2. Connect to Neo4j
-3. Export all data types (personas, relationships, memories, goals)
-4. Generate Cypher import script
-5. Write to output file
-6. Report statistics with emoji indicators
-7. Handle errors with exit codes
+**Entry Point**: `main()` at `architecture_orchestrator.py:304` (async)
 
 ---
 
-### 3. Testing and Validation
+#### 5. UXOrchestrator
+**File**: `orchestrators/ux_orchestrator.py:21`
 
-#### 3.1 `test_mcp_validation.py` - MCP Server Validation Suite
-**Purpose**: Comprehensive validation for MCP server connectivity and functionality.
+**Purpose**: Orchestrator for comprehensive UX/UI design workflow.
 
-**Location**: `/home/donbr/lila-graph/lila-mcp/test_mcp_validation.py`
+**Inherits**: `BaseOrchestrator`
 
-**Module Configuration** (lines 12-13):
-- Logging level: INFO for debugging
-- Import: FastMCP Client and SimpleLilaMCPServer
+**Constructor Parameters**:
+- `project_name: str` - Name of project being designed (default: "Project")
+- `output_base_dir: Path` - Base directory for outputs (default: `Path("outputs")`)
+- `show_tool_details: bool` - Display tool usage (default: `True`)
 
-**Key Functions**:
+**Output Structure**:
+- `01_research/` - User research and personas
+- `02_ia/` - Information architecture
+- `03_design/` - Visual design specs
+- `04_prototypes/` - Interactive prototypes
+- `05_api_contracts/` - API specifications
+- `06_design_system/` - Design system documentation
 
-1. `test_direct_connection()` (lines 15-96): Test in-memory connection
-   - **Purpose**: Validate FastMCP best practice (direct in-memory connection)
-   - **Setup** (lines 22-26):
-     - Creates SimpleLilaMCPServer instance
-     - Uses FastMCP Client with direct server reference
-     - Async context manager for connection lifecycle
-   - **Tests Performed**:
-     - Connection validation (line 27): `client.is_connected()`
-     - Server ping test (lines 30-32): `await client.ping()`
-     - Resource listing (lines 35-40): `await client.list_resources()`
-     - Resource reading (lines 42-50): `await client.read_resource(uri)`
-     - Tool listing (lines 53-58): `await client.list_tools()`
-     - Tool invocation (lines 60-71): `await client.call_tool()` with analyze_persona_compatibility
-     - Prompt listing (lines 74-78): `await client.list_prompts()`
-     - Prompt retrieval (lines 80-93): `await client.get_prompt()` with parameters
-   - **Returns**: Tuple of (success: bool, resources_count: int, tools_count: int, prompts_count: int)
-   - **Test Data** (lines 63-67):
-     - persona1_id: "lila"
-     - persona2_id: "don"
-     - relationship_type: "romantic"
+**Agents**:
+- `ux-researcher` - Conducts user research, creates personas (`ux_orchestrator.py:72`)
+  - Tools: `["Read", "Write", "Grep", "Glob", "WebSearch"]`
+  - Model: `sonnet`
+- `ia-architect` - Designs information architecture, sitemaps (`ux_orchestrator.py:90`)
+  - Tools: `["Read", "Write", "Grep", "Glob"]`
+  - Model: `sonnet`
+- `ui-designer` - Creates visual designs and mockups (`ux_orchestrator.py:108`)
+  - Tools: `["Read", "Write", "Grep", "Glob"]`
+  - Model: `sonnet`
+- `prototype-developer` - Creates interactive prototypes (`ux_orchestrator.py:129`)
+  - Tools: `["Read", "Write", "Grep", "Glob", "Bash"]`
+  - Model: `sonnet`
 
-2. `test_inspector_connection()` (lines 98-132): Test HTTP Inspector connection
-   - **Purpose**: Validate Inspector integration (requires running server)
-   - **Connection** (line 105): `Client("http://localhost:6274/")`
-   - **Tests Performed**:
-     - Connection check (line 109)
-     - Server ping (lines 112-114)
-     - Component listing (lines 117-119): resources, tools, prompts
-     - Count reporting (lines 121-123)
-   - **Error Handling** (lines 128-131):
-     - Catches connection failures
-     - Provides helpful startup instructions
-     - Returns False if Inspector not running
-   - **Returns**: Boolean success indicator
+**Allowed Tools**: `["Read", "Write", "Grep", "Glob", "Bash", "WebSearch"]` (`ux_orchestrator.py:163`)
 
-3. `main()` (lines 134-168): Run comprehensive validation
-   - **Execution Flow**:
-     - Prints banner (lines 137-138)
-     - Runs direct connection test (line 141)
-     - Runs Inspector connection test (line 144)
-     - Generates summary report (lines 147-166)
-   - **Summary Report** (lines 148-153):
-     - Direct connection result
-     - Inspector connection result
-     - Resources count
-     - Tools count
-     - Prompts count
-   - **Success Messages** (lines 155-158):
-     - Confirms server functionality
-     - Validates self-contained operation
-   - **Inspector Status** (lines 159-166):
-     - Shows Inspector URL with auth token if running
-     - Provides startup instructions if not running
-   - **Returns**: Boolean indicating direct test success
+**Workflow Phases**:
+1. `phase_1_ux_research()` - UX research, personas, user journeys (`ux_orchestrator.py:165`)
+2. `phase_2_information_architecture()` - Sitemaps, navigation, content structure (`ux_orchestrator.py:215`)
+3. `phase_3_visual_design()` - High-fidelity mockups and design specs (`ux_orchestrator.py:273`)
+4. `phase_4_interactive_prototyping()` - Working prototypes and interactions (`ux_orchestrator.py:342`)
+5. `phase_5_api_contract_design()` - Frontend-backend interface specs (`ux_orchestrator.py:411`)
+6. `phase_6_design_system_documentation()` - Component library and style guide (`ux_orchestrator.py:487`)
 
-**Usage Pattern**:
-```python
-# Run validation
-success = asyncio.run(main())
-exit(0 if success else 1)
-```
-
-**Entry Point** (lines 170-172):
-```python
-if __name__ == "__main__":
-    success = asyncio.run(main())
-    exit(0 if success else 1)
-```
+**Entry Point**: `main()` at `ux_orchestrator.py:607` (async)
 
 ---
 
-#### 3.2 `architecture.py` - Architecture Analysis Tool
-**Purpose**: Repository analyzer using Claude Agent SDK for documentation generation.
+#### 6. CrossOrchestratorCommunication (Mixin)
+**File**: `orchestrators/base_orchestrator.py:298`
 
-**Location**: `/home/donbr/lila-graph/lila-mcp/architecture.py`
+**Purpose**: Mixin for orchestrators that need cross-domain communication.
 
-**Module Configuration** (lines 26-30):
-- Output directories defined with Path objects
-- OUTPUT_DIR: "repo_analysis"
-- DOCS_DIR: "repo_analysis/docs"
-- DIAGRAMS_DIR: "repo_analysis/diagrams"
-- REPORTS_DIR: "repo_analysis/reports"
+**Key Methods**:
+- `register_orchestrator(name, orchestrator)` - Register orchestrator for cross-domain communication (`base_orchestrator.py:305`)
+- `invoke_orchestrator(orchestrator_name, phase_name, context)` - Invoke another orchestrator (`base_orchestrator.py:314`)
 
-**Display Utilities**:
+**Usage Pattern**: Can be inherited alongside BaseOrchestrator for orchestrators needing cross-domain validation or coordination.
 
-1. `display_message(msg, show_tools=True)` (lines 33-68): Display agent messages with tool visibility
-   - **Purpose**: Show full visibility into tool usage during analysis
-   - **Message Types**:
-     - AssistantMessage (lines 36-54): Shows text blocks and tool uses
-     - UserMessage (lines 56-61): Shows tool results
-     - ResultMessage (lines 63-68): Shows phase completion and costs
-   - **Tool Display** (lines 39-54):
-     - Read operations: Shows file_path being read
-     - Grep operations: Shows search pattern
-     - Write operations: Shows file_path being written
-     - Bash operations: Shows command being executed
-   - **Result Display** (lines 59-61): Shows first 200 characters of tool results
+---
 
-**Analysis Phases**:
+### Agent Management
 
-2. `phase_1_component_inventory(client)` (lines 71-105): Generate component inventory
-   - **Query Content** (lines 77-100):
-     - Analyze all Python modules and purposes
-     - Document key classes and functions
-     - Distinguish public API vs internal implementation
-     - Identify entry points and main interfaces
-   - **Output**: `{DOCS_DIR}/01_component_inventory.md`
-   - **Structure**: Public API, Internal Implementation, Entry Points sections
+#### 7. AgentRegistry
+**File**: `agents/registry.py:10`
 
-3. `phase_2_architecture_diagrams(client)` (lines 107-146): Generate architecture diagrams
-   - **Query Content** (lines 113-142):
-     - System architecture (layered view)
-     - Component relationships
-     - Class hierarchies
-     - Module dependencies
-   - **Output**: `{DIAGRAMS_DIR}/02_architecture_diagrams.md`
-   - **Format**: Mermaid diagrams with explanations
+**Purpose**: Registry for discovering and loading agent definitions from JSON files.
 
-4. `phase_3_data_flows(client)` (lines 149-186): Document data flows
-   - **Query Content** (lines 156-182):
-     - Simple query flow
-     - Interactive client session flow
-     - Tool permission callback flow
-     - MCP server communication flow
-     - Message parsing and routing
-   - **Output**: `{DOCS_DIR}/03_data_flows.md`
-   - **Format**: Sequence diagrams with explanations
+**Constructor Parameters**:
+- `agents_dir: Path` - Base directory containing agent definitions (default: package directory)
 
-5. `phase_4_api_documentation(client)` (lines 189-211): Generate API documentation
-   - **Query Content** (lines 196-206):
-     - All public functions and classes
-     - Parameters, return types, and examples
-     - Usage patterns and best practices
-     - Configuration options
-   - **Output**: `{DOCS_DIR}/04_api_reference.md`
-   - **Format**: Clear examples with source file links
+**Instance Variables**:
+- `self._cache: Dict[str, AgentDefinition]` - Cache for loaded agents
 
-6. `phase_5_synthesis(client)` (lines 213-256): Create final synthesis document
-   - **Query Content** (lines 219-251):
-     - Reviews all previously generated documents
-     - Creates high-level summary
-     - Provides quick start guide
-     - Summarizes architecture and components
-     - Highlights key flow patterns
-   - **Output**: `{OUTPUT_DIR}/README.md`
-   - **Structure**: Overview, Quick Start, Architecture Summary, Component Overview, Data Flows, References
+**Key Methods**:
+- `discover_agents(domain)` - Discover all available agent definition files (`registry.py:22`)
+  - Returns: Dictionary mapping agent names to file paths
+  - Scans subdirectories for `*.json` files
+  - Skips directories starting with `_`
+- `load_agent(agent_name, domain)` - Load agent definition from JSON file (`registry.py:45`)
+  - Uses cache to avoid re-loading
+  - Returns: `AgentDefinition` object or `None` if not found
+- `load_domain_agents(domain)` - Load all agents for specific domain (`registry.py:82`)
+  - Returns: Dictionary mapping agent names to `AgentDefinition` objects
 
-**Verification**:
+**Caching**: Uses `self._cache` with keys like `"{domain}/{agent_name}"` to avoid re-loading agent definitions.
 
-7. `verify_outputs()` (lines 258-280): Verify all expected outputs were created
-   - **Expected Files** (lines 264-270):
-     - 01_component_inventory.md
-     - 02_architecture_diagrams.md
-     - 03_data_flows.md
-     - 04_api_reference.md
-     - README.md
-   - **Output**: File existence checks with file sizes
+---
 
-**Main Execution**:
+### Tool Integration
 
-8. `main()` (lines 282-362): Run comprehensive repository analysis in phases
-   - **Banner** (lines 284-293): Displays analysis configuration
-   - **Agent Definitions** (lines 295-330):
-     - **analyzer_agent**: Code structure and architecture analysis
-       - Model: "sonnet"
-       - Tools: Read, Grep, Glob, Write, Bash
-       - Prompt: Emphasizes writing actual files, not just descriptions
-     - **doc_writer_agent**: Technical documentation creation
-       - Model: "sonnet"
-       - Tools: Read, Write, Grep, Glob
-       - Prompt: Focuses on clarity and developer experience
-   - **Options Configuration** (lines 332-337):
-     - Agents: analyzer and doc-writer
-     - Allowed tools: Read, Write, Grep, Glob, Bash
-     - Permission mode: "acceptEdits" (auto-approve writes)
-     - Working directory: "." (current directory)
-   - **Execution** (lines 340-349):
-     - Runs all 5 phases sequentially
-     - Each phase uses async/await
-     - Messages displayed during execution
-   - **Verification and Summary** (lines 349-357):
-     - Verifies output files
-     - Reports completion location
-     - Handles errors with partial results message
+#### 8. MCPRegistry
+**File**: `tools/mcp_registry.py:8`
 
-**Entry Point** (lines 361-362):
-```python
-if __name__ == "__main__":
-    asyncio.run(main())
-```
+**Purpose**: Registry for discovering and managing MCP server connections.
+
+**Registered Servers** (`mcp_registry.py:26-51`):
+- `figma` - Figma MCP Server for design context
+  - Tools: `["figma_get_file", "figma_get_components"]`
+  - Requires: `FIGMA_ACCESS_TOKEN`
+- `v0` - Vercel v0 MCP Server for UI generation
+  - Tools: `["v0_generate_ui", "v0_generate_from_image", "v0_chat_complete"]`
+  - Requires: `V0_API_KEY`
+- `sequential-thinking` - Advanced reasoning MCP tool
+  - Tools: `["sequentialthinking"]`
+  - No configuration required
+- `playwright` - Browser automation MCP tool
+  - Tools: `["browser_navigate", "browser_click", "browser_snapshot"]`
+  - No configuration required
+
+**Key Methods**:
+- `discover_mcp_servers()` - Auto-discover available MCP servers (`mcp_registry.py:16`)
+- `is_server_available(server_name)` - Check if MCP server is available (`mcp_registry.py:55`)
+- `get_server_tools(server_name)` - Get list of tools provided by server (`mcp_registry.py:69`)
+- `validate_tool_availability(tool_name)` - Validate if specific tool is available (`mcp_registry.py:83`)
+- `get_configuration_requirements(server_name)` - Get configuration requirements (`mcp_registry.py:98`)
+  - Returns configuration template with required env vars and setup instructions
+- `get_fallback_options(tool_name)` - Get fallback options if tool unavailable (`mcp_registry.py:130`)
+  - Returns list of alternative approaches
+
+---
+
+#### 9. FigmaIntegration
+**File**: `tools/figma_integration.py:7`
+
+**Purpose**: Wrapper for Figma MCP server and REST API integration.
+
+**Environment Variables**:
+- `FIGMA_ACCESS_TOKEN` - Figma personal access token (checked in `__init__`)
+
+**Instance Variables**:
+- `self.access_token` - Figma access token from environment
+- `self.mcp_available` - Boolean indicating MCP server availability
+
+**Key Methods**:
+- `is_available()` - Check if Figma integration is available (`figma_integration.py:15`)
+  - Returns: `True` if token exists or MCP is available
+- `get_design_context(file_id)` - Get design context from Figma file (`figma_integration.py:23`)
+  - Args: `file_id` - Figma file ID
+  - Returns: Design context dict or error with fallback instructions
+- `export_to_code(component_id, framework)` - Export Figma component to code (`figma_integration.py:59`)
+  - Args: `component_id` - Figma component ID, `framework` - Target framework (default: "react")
+  - Returns: Generated code string or `None` if unavailable
+- `create_component(spec)` - Create Figma component from specification (`figma_integration.py:86`)
+  - Args: `spec` - Component specification dictionary
+  - Returns: Component ID or `None` if MCP unavailable
+- `get_setup_instructions()` - Get setup instructions for Figma integration (`figma_integration.py:103`)
+  - Returns: Markdown-formatted setup instructions (3 options: MCP, REST API, Manual)
+
+**Note**: Current implementation is a stub/skeleton with detailed instructions for future integration.
+
+---
+
+### Data Management
+
+#### 10. Neo4jDataImporter
+**File**: `import_data.py:22`
+
+**Purpose**: Imports psychological intelligence data and schema into Neo4j for MCP standalone.
+
+**Constructor Parameters**:
+- `uri: str` - Neo4j connection URI
+- `user: str` - Neo4j username
+- `password: str` - Neo4j password
+- `max_retries: int` - Maximum connection retry attempts (default: 30)
+
+**Key Methods**:
+- `_connect_with_retry()` - Connect to Neo4j with retry logic (`import_data.py:34`)
+  - Retries every 2 seconds for container startup
+- `close()` - Close Neo4j connection (`import_data.py:51`)
+- `clear_database()` - Clear all existing data (`import_data.py:56`)
+  - Runs: `MATCH (n) DETACH DELETE n`
+- `load_schema(schema_path)` - Load schema constraints, indexes, and persona data (`import_data.py:63`)
+  - Creates constraints for PersonaAgent, Memory, Goal
+  - Creates indexes for performance (attachment_style, memory_type, etc.)
+  - Calls `_load_family_graph_data()` to import personas
+- `_load_family_graph_data(schema, session)` - Load personas and relationships from JSON (`import_data.py:122`)
+  - Parses `family_graph` structure from schema JSON
+  - Maps behavioral styles to Big Five personality traits
+  - Creates PersonaAgent nodes and RELATIONSHIP edges
+- `_map_behavioral_to_bigfive(behavioral_style)` - Map DISC to Big Five traits (`import_data.py:239`)
+  - Maps D (Dominance), I (Influence), S (Steadiness), C (Conscientiousness)
+  - Returns dict with openness, conscientiousness, extraversion, agreeableness, neuroticism
+- `import_seed_data(seed_data_path)` - Import seed data from Cypher file (`import_data.py:282`)
+  - Splits Cypher script into statements (semicolon-separated)
+  - Executes each statement sequentially
+- `create_default_personas()` - Create default personas if no data imported (`import_data.py:312`)
+  - Creates Lila (AI Research Assistant, secure attachment)
+  - Creates Alex (Software Engineer, secure attachment)
+  - Creates friendship relationship between them
+- `verify_import()` - Verify data was imported successfully (`import_data.py:379`)
+  - Counts personas, relationships, memories, goals
+  - Prints verification summary
+
+**Entry Point**: `main()` at `import_data.py:409`
+
+**CLI Arguments**:
+- `--seed-data` - Seed data Cypher file (default: `seed_data.cypher`)
+- `--schema` - Schema JSON file (default: `graphs/lila-graph-schema-v8.json`)
+- `--uri` - Neo4j URI (default: `bolt://localhost:7687`)
+- `--user` - Neo4j username (default: `neo4j`)
+- `--password` - Neo4j password (or use `NEO4J_PASSWORD` env var)
+- `--create-defaults` - Create default personas if no seed data found
+
+---
+
+#### 11. Neo4jDataExporter
+**File**: `export_data.py:21`
+
+**Purpose**: Exports psychological intelligence data from Neo4j for MCP standalone seeding.
+
+**Constructor Parameters**:
+- `uri: str` - Neo4j connection URI
+- `user: str` - Neo4j username
+- `password: str` - Neo4j password
+
+**Key Methods**:
+- `close()` - Close Neo4j connection (`export_data.py:28`)
+- `export_personas()` - Export all PersonaAgent nodes (`export_data.py:32`)
+  - Returns: List of persona dictionaries with all properties
+  - Query: `MATCH (p:PersonaAgent) RETURN p.*`
+- `export_relationships()` - Export all relationships between personas (`export_data.py:64`)
+  - Returns: List of relationship dictionaries
+  - Query: `MATCH (p1:PersonaAgent)-[r:RELATIONSHIP]->(p2:PersonaAgent)`
+- `export_memories()` - Export memory nodes associated with personas (`export_data.py:91`)
+  - Returns: List of memory dictionaries
+  - Query: `MATCH (p:PersonaAgent)-[:HAS_MEMORY]->(m:Memory)`
+- `export_goals()` - Export goal nodes associated with personas (`export_data.py:115`)
+  - Returns: List of goal dictionaries
+  - Query: `MATCH (p:PersonaAgent)-[:HAS_GOAL]->(g:Goal)`
+- `generate_cypher_script(personas, relationships, memories, goals)` - Generate Cypher import script (`export_data.py:141`)
+  - Creates complete Cypher script with CREATE statements
+  - Handles escaping of quotes and newlines
+  - Returns: Multi-line Cypher script string
+
+**Entry Point**: `main()` at `export_data.py:245`
+
+**CLI Arguments**:
+- `--output` - Output Cypher file (default: `seed_data.cypher`)
+- `--uri` - Neo4j URI (default: `bolt://localhost:7687`)
+- `--user` - Neo4j username (default: `neo4j`)
+- `--password` - Neo4j password (or use `NEO4J_PASSWORD` env var)
 
 ---
 
 ## Internal Implementation
 
-### 4. Configuration Files
+### Package Initialization Files
 
-#### 4.1 `pyproject.toml` - Project Configuration
-**Location**: `/home/donbr/lila-graph/lila-mcp/pyproject.toml`
+#### 12. orchestrators/__init__.py
+**File**: `orchestrators/__init__.py:1`
 
-**Project Metadata** (lines 1-32):
-- **Name**: `lila-mcp-standalone`
-- **Version**: `1.0.0`
-- **Description**: Standalone Lila MCP Server - Minimal psychological relationship intelligence
-- **Authors**: Lila Team <team@lila.dev>
-- **Python Requirement**: `>=3.12`
+**Exports**: `BaseOrchestrator`
 
-**Core Dependencies** (lines 10-32):
-
-**MCP Framework**:
-- `fastmcp>=2.12.3` (line 12): FastMCP server framework
-
-**Database**:
-- `neo4j>=5.15.0` (line 14): Neo4j graph database driver
-
-**LLM Integration**:
-- `openai>=1.30.0` (line 16): OpenAI API client
-- `anthropic>=0.25.0` (line 17): Anthropic API client
-
-**Data Validation**:
-- `pydantic>=2.6.0` (line 19): Data validation with type hints
-- `pydantic-settings>=2.2.0` (line 20): Settings management
-
-**HTTP Clients**:
-- `httpx>=0.27.0` (line 21): Modern async HTTP client
-- `aiohttp>=3.9.0` (line 22): Async HTTP client/server
-
-**Observability**:
-- `logfire>=0.28.0` (line 24): Telemetry and monitoring
-
-**Configuration**:
-- `python-dotenv>=1.0.0` (line 26): .env file loading
-
-**CLI**:
-- `click>=8.1.0` (line 28): Command-line interface creation
-
-**Async Utilities**:
-- `asyncio-mqtt>=0.16.0` (line 30): MQTT async support
-
-**Agent Framework**:
-- `claude-agent-sdk>=0.1.0` (line 31): Claude Agent SDK
-
-**Optional Development Dependencies** (lines 34-40):
-- `pytest>=8.0.0` (line 36): Testing framework
-- `pytest-asyncio>=0.23.0` (line 37): Async test support
-- `black>=24.0.0` (line 38): Code formatter
-- `ruff>=0.3.0` (line 39): Fast Python linter
-
-**Build System** (lines 42-44):
-- Requires: `hatchling`
-- Backend: `hatchling.build`
-
-**Tool Configuration**:
-
-**Black Formatter** (lines 46-48):
-- Line length: 120 characters
-- Target version: Python 3.12
-
-**Ruff Linter** (lines 50-52):
-- Line length: 120 characters
-- Target version: Python 3.12
-
-**Pytest** (lines 54-59):
-- Asyncio mode: auto
-- Test paths: ["tests"]
-- File pattern: test_*.py
-- Class pattern: Test*
-- Function pattern: test_*
-
-**Hatch Build Configuration** (lines 61-76):
-- Allow direct references: true
-- Wheel targets include (lines 64-72):
-  - All `*.py` files in root
-  - `agents/**/*.py` subdirectory
-  - `llm/**/*.py` subdirectory
-  - `graph/**/*.py` subdirectory
-  - `.env` file
-- Source mapping (lines 74-76):
-  - Current directory "." maps to "lila_mcp_standalone" package
+```python
+from .base_orchestrator import BaseOrchestrator
+__all__ = ["BaseOrchestrator"]
+```
 
 ---
 
-#### 4.2 `fastmcp.json` - FastMCP Server Configuration
-**Location**: `/home/donbr/lila-graph/lila-mcp/fastmcp.json`
+#### 13. agents/__init__.py
+**File**: `agents/__init__.py:1`
 
-**Schema** (line 2):
-- Reference: `https://gofastmcp.com/public/schemas/fastmcp.json/v1.json`
+**Exports**: `AgentRegistry`
 
-**Source Configuration** (lines 4-8):
-- **Type**: `filesystem` (line 5)
-- **Path**: `lila_mcp_server.py` (line 6)
-- **Entrypoint**: `mcp` (line 7)
-  - References module-level `mcp` variable at line 766 of lila_mcp_server.py
-
-**Environment Configuration** (lines 10-14):
-- **Type**: `uv` (line 11) - Uses UV package manager
-- **Python**: `3.12` (line 12) - Python version requirement
-- **Project**: `.` (line 13) - Current directory
-  - Note: Using "." instead of version specifier to avoid MCP Inspector bugs
-
-**Purpose**:
-- Auto-configuration for `fastmcp dev` command (development with Inspector)
-- Auto-configuration for `fastmcp run` command (production HTTP server)
-- Auto-configuration for `fastmcp inspect` command (capability inspection)
+```python
+from .registry import AgentRegistry
+__all__ = ["AgentRegistry"]
+```
 
 ---
 
-#### 4.3 `.env.example` - Environment Template
-**Location**: `/home/donbr/lila-graph/lila-mcp/.env.example`
+#### 14. tools/__init__.py
+**File**: `tools/__init__.py:1`
 
-**Configuration Categories**:
+**Exports**: `MCPRegistry`, `FigmaIntegration`
 
-**1. UV Environment Management** (lines 12-21):
-- Purpose: Address VIRTUAL_ENV mismatch warnings
-- Variables:
-  - `UV_PROJECT_ENVIRONMENT`: Override project environment path (optional)
-  - `UV_PYTHON`: Specify Python version for uv (optional)
-
-**2. Neo4j Database Configuration** (lines 24-34):
-- `NEO4J_URI`: Connection string (placeholder: `<fill>`)
-- `NEO4J_USER`: Database username
-- `NEO4J_PASSWORD`: Database password
-- `DISABLE_NEO4J`: Disable database connection flag
-- `NEO4J_TIMEOUT`: Connection timeout setting
-- `NEO4J_MAX_RETRY_TIME`: Maximum retry duration
-
-**3. LLM Configuration** (lines 37-43):
-- `DEFAULT_LLM_MODEL`: Model selection
-- `LLM_TEMPERATURE`: Temperature parameter
-- `OPENAI_API_KEY`: OpenAI API key (commented)
-- `ANTHROPIC_API_KEY`: Anthropic API key (commented)
-
-**4. FastMCP and Telemetry Configuration** (lines 46-56):
-- `ENABLE_LOGFIRE_TELEMETRY`: Enable observability
-- `LOGFIRE_PROJECT_NAME`: Project name for telemetry
-- `LOGFIRE_TOKEN`: Authentication token (optional, commented)
-- `FASTMCP_AUTO_RELOAD`: Development auto-reload
-- `FASTMCP_LOG_LEVEL`: Logging verbosity
-
-**5. Environment and Logging Configuration** (lines 59-69):
-- `ENV`: Environment name
-- `LOG_LEVEL`: Logging level
-- `LOG_FORMAT`: Log message format
-- `LOG_FILE_ENABLED`: File logging flag (optional)
-- `LOG_FILE_PATH`: Log file location (optional)
-- `LOG_ROTATION_SIZE`: Rotation threshold (optional)
-- `LOG_RETENTION_DAYS`: Retention period (optional)
-
-**6. MCP Server Configuration** (lines 72-84):
-- `MCP_HOST`: Server host address
-- `MCP_PORT`: Server port number
-- `MCP_INSPECTOR_HOST`: Inspector host address
-- `MCP_INSPECTOR_PORT`: Inspector port number
-- `MCP_TRANSPORT`: Transport protocol (SSE, HTTP)
-- `MCP_REQUEST_TIMEOUT`: Request timeout duration
-- `MCP_MAX_CONNECTIONS`: Maximum concurrent connections
-
-**7. Development and Performance Configuration** (lines 87-100):
-- `MIGRATION_PHASE`: Migration status tracking
-- `DEBUG_MODE`: Debug features flag
-- `ENABLE_DEV_FEATURES`: Development features flag
-- `ENABLE_PERFORMANCE_MONITORING`: Performance tracking flag
-- `MAX_CONCURRENT_REQUESTS`: Concurrency limit
-- `MEMORY_LIMIT_MB`: Memory limit in MB
-- `REQUEST_TIMEOUT_SECONDS`: Request timeout
-
-**8. Security Configuration** (lines 103-114):
-- `ENABLE_AUTH`: Authentication flag
-- `CORS_ALLOWED_ORIGINS`: CORS origins
-- `RATE_LIMIT_ENABLED`: Rate limiting flag
-- `RATE_LIMIT_REQUESTS_PER_MINUTE`: Rate limit threshold
-- `TLS_ENABLED`: TLS/SSL flag
-- `TLS_CERT_PATH`: Certificate path (optional, commented)
-- `TLS_KEY_PATH`: Private key path (optional, commented)
-
-**9. Development Tools and Debugging** (lines 117-126):
-- `ENABLE_INSPECTOR_INTEGRATION`: Inspector integration flag
-- `ENABLE_PROTOCOL_LOGGING`: Protocol logging flag
-- `ENABLE_PERFORMANCE_PROFILING`: Profiling flag
-- `UV_DEBUG`: UV package manager debug flag
-- `PYTHONPATH_DEBUG`: Python path debugging flag
-
-**10. Data and Storage Configuration** (lines 129-138):
-- `DATA_DIR`: Data directory path
-- `CACHE_DIR`: Cache directory path
-- `TEMP_DIR`: Temporary files directory
-- `ENABLE_MEMORY_FALLBACK`: In-memory fallback flag
-- `MEMORY_DB_SIZE_LIMIT`: Memory database limit
-
-**11. Deployment Configuration** (lines 141-151):
-- `CONTAINER_MODE`: Container deployment flag
-- `HEALTH_CHECK_ENABLED`: Health check endpoint flag
-- `HEALTH_CHECK_INTERVAL`: Health check interval
-- `SERVICE_NAME`: Service name for discovery
-- `SERVICE_VERSION`: Service version
-- `SERVICE_ENVIRONMENT`: Deployment environment
-
-**Notes**:
-- All values are placeholders (`<fill>`) requiring configuration
-- Environment variables support multiple deployment scenarios
-- Comprehensive coverage from development to production
-- Optional variables are commented out
+```python
+from .mcp_registry import MCPRegistry
+from .figma_integration import FigmaIntegration
+__all__ = ["MCPRegistry", "FigmaIntegration"]
+```
 
 ---
 
-#### 4.4 `.mcp.json` - MCP Client Configuration
-**Location**: `/home/donbr/lila-graph/lila-mcp/.mcp.json`
+### Internal Utilities
 
-**Purpose**: Claude Desktop/client configuration for MCP server discovery
+#### 15. architecture.py (Legacy/Original)
+**File**: `architecture.py:1`
 
-**MCP Servers Configured** (lines 2-70):
+**Purpose**: Original architecture analysis script (now refactored into ArchitectureOrchestrator).
 
-**1. mcp-server-time** (lines 3-10):
-- **Command**: `uvx`
-- **Args**: `["mcp-server-time", "--local-timezone=America/Los_Angeles"]`
-- **Purpose**: Time utilities and timezone operations
+**Note**: This appears to be the original implementation before the orchestrator framework was extracted. The functionality has been moved to `orchestrators/architecture_orchestrator.py` and `orchestrators/base_orchestrator.py`.
 
-**2. sequential-thinking** (lines 11-17):
-- **Command**: `npx`
-- **Args**: `["-y", "@modelcontextprotocol/server-sequential-thinking"]`
-- **Purpose**: Sequential thinking and reasoning support
+**Function**: `display_message(msg, show_tools)` - Display message with tool visibility (`architecture.py:33`)
 
-**3. ai-docs-server** (lines 18-42):
-- **Command**: `uvx`
-- **Package**: `mcpdoc`
-- **URLs** (concise documentation):
-  - MCPProtocol: https://modelcontextprotocol.io/llms.txt
-  - FastMCP: https://gofastmcp.com/llms.txt
-  - LangGraph: https://langchain-ai.github.io/langgraph/llms.txt
-  - Anthropic: https://docs.anthropic.com/llms.txt
-- **Settings**:
-  - Transport: stdio
-  - Follow redirects: enabled
-  - Timeout: 20 seconds
-  - Allowed domains: modelcontextprotocol.io, langchain-ai.github.io, docs.anthropic.com, gofastmcp.com
-
-**4. ai-docs-server-full** (lines 43-69):
-- **Command**: `uvx`
-- **Package**: `mcpdoc`
-- **URLs** (full documentation):
-  - McpProtocolFull: https://modelcontextprotocol.io/llms-full.txt
-  - FastMCPFull: https://gofastmcp.com/llms-full.txt
-  - LangGraphFull: https://langchain-ai.github.io/langgraph/llms-full.txt
-  - AnthropicFull: https://docs.anthropic.com/llms-full.txt
-- **Settings**: Same as ai-docs-server
+**Entry Point**: `if __name__ == "__main__"` at `architecture.py:361`
 
 ---
 
-### 5. Infrastructure Scripts
+### Test Modules
 
-#### 5.1 `init_mcp_database.sh` - Database Initialization Script
-**Location**: `/home/donbr/lila-graph/lila-mcp/init_mcp_database.sh` (lines 1-203)
+#### 16. test_orchestrators.py
+**File**: `test_orchestrators.py:1`
 
-**Purpose**: Automatically initialize Neo4j database for MCP standalone deployment
+**Purpose**: Validation tests for multi-domain orchestrator system without requiring Claude API calls.
 
-**Script Configuration** (lines 1-8):
-- Shebang: `#!/bin/bash`
-- Error handling: `set -e` (exit on error)
-- Usage: `./init_mcp_database.sh`
+**Test Functions**:
+- `test_imports()` - Test that all modules can be imported (`test_orchestrators.py:7`)
+- `test_agent_registry()` - Test agent registry functionality (`test_orchestrators.py:36`)
+  - Verifies discovery of agents
+  - Tests loading of specific agents
+  - Checks agent tools and configuration
+- `test_mcp_registry()` - Test MCP registry functionality (`test_orchestrators.py:81`)
+  - Verifies expected servers registered
+  - Tests availability checking
+- `test_orchestrator_instantiation()` - Test orchestrator instantiation (`test_orchestrators.py:113`)
+  - Creates ArchitectureOrchestrator instance
+  - Creates UXOrchestrator instance
+  - Verifies agent and tool configuration
+- `test_figma_integration()` - Test Figma integration setup (`test_figma_integration.py:142`)
+  - Verifies FigmaIntegration can be created
+  - Checks setup instructions availability
 
-**Color Definitions** (lines 11-16):
-- GREEN, BLUE, YELLOW, RED: Terminal color codes for output
-- NC: No Color reset
+**Entry Point**: `main()` at `test_orchestrators.py:167`
 
-**Environment Variables** (lines 20-26):
-- `NEO4J_URI`: Default `bolt://localhost:7687`
-- `NEO4J_USER`: Default `neo4j`
-- `NEO4J_PASSWORD`: Default `passw0rd`
-- `DATA_DIR`: `./data`
-- `SEED_DATA_FILE`: `seed_data.cypher`
-- `SCHEMA_FILE`: `../../graphs/lila-graph-schema-v8.json`
-
-**Key Functions**:
-
-1. `check_neo4j_ready()` (lines 29-59): Wait for Neo4j startup
-   - **Max Attempts**: 30 (line 30)
-   - **Retry Delay**: 2 seconds (line 54)
-   - **Method**: Python inline script to test connection
-   - **Query**: `RETURN 1` to verify connectivity
-   - **Output**: Progress messages with attempt counter
-   - **Return**: 0 on success, 1 on failure after max attempts
-
-2. `check_database_has_data()` (lines 62-85): Verify existing data
-   - **Method**: Python inline script to count personas
-   - **Query**: `MATCH (p:PersonaAgent) RETURN count(p) as count`
-   - **Return**: 0 if personas exist, 1 if empty
-   - **Output**: Persona count message
-
-3. `export_main_system_data()` (lines 88-101): Export from main Lila system
-   - **Target**: `bolt://localhost:7687` (main system)
-   - **Script**: Calls `export_data.py` with output to seed file
-   - **Error Handling**: Silent failure if main system not running
-   - **Return**: 0 on success, 1 on failure
-
-4. `import_database_data()` (lines 104-116): Import seed data
-   - **Arguments**: Uses NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD
-   - **Script**: Calls `import_data.py` with seed data or --create-defaults
-   - **Fallback**: Creates default personas if no seed file exists
-
-5. `start_services()` (lines 119-132): Start Docker Compose infrastructure
-   - **UID/GID Export** (lines 123-124): Set user/group for permissions
-   - **Command**: `docker compose up -d`
-   - **Wait**: 10-second sleep for service health (line 131)
-
-6. `verify_mcp_server()` (lines 135-148): Verify FastMCP functionality
-   - **Check**: `fastmcp` command availability
-   - **Test**: `fastmcp inspect` to verify server
-   - **Output**: Startup instructions for development and production
-   - **Fallback**: Installation message if FastMCP not found
-
-7. `main()` (lines 151-203): Orchestrate initialization workflow
-   - **Directory Check** (lines 155-158): Verify fastmcp.json exists
-   - **Execution Flow**:
-     1. Start services (line 161)
-     2. Wait for Neo4j ready (line 164-167)
-     3. Check for existing data (line 170)
-     4. Export from main system or create defaults (lines 173-178)
-     5. Import data (line 181)
-     6. Verify import success (line 184-189)
-     7. Verify MCP server (line 193)
-   - **Output** (lines 195-199):
-     - Success message
-     - Next steps for development and production
-     - Instructions for stopping services
-
-**Entry Point** (line 203):
-```bash
-main "$@"
+**Expected Agents**:
+```python
+expected_agents = {
+    'ux_researcher', 'ia_architect', 'ui_designer', 'prototype_developer',
+    'analyzer', 'doc_writer'
+}
 ```
 
 ---
 
 ## Entry Points
 
-### Main Entry Points
+### 1. MCP Server Entry Points
 
-#### 1. MCP Server Entry Points
-
-**A. Full Production Server** (`lila_mcp_server.py`):
-
-**Direct Execution** (lines 768-779):
-```python
-async def main():
-    logging.basicConfig(level=logging.INFO)
-    server = LilaMCPServer()
-    try:
-        await server.run_server()
-    finally:
-        server.close()
-
-if __name__ == "__main__":
-    asyncio.run(main())
-```
-- **Command**: `python lila_mcp_server.py`
-- **Transport**: SSE (Server-Sent Events)
-- **Default Host**: localhost
-- **Default Port**: 8765
-- **Database**: Requires Neo4j connection
-
-**FastMCP CLI** (lines 764-766):
-```python
-_server_instance = LilaMCPServer()
-mcp = _server_instance.app  # FastMCP looks for 'mcp', 'server', or 'app'
-```
-- **Development**: `fastmcp dev` (with Inspector UI)
-- **Production**: `fastmcp run` (HTTP server)
-- **Inspection**: `fastmcp inspect` (capability listing)
-- **Configuration**: Uses `fastmcp.json` for auto-configuration
-
-**B. Simplified Development Server** (`simple_lila_mcp_server.py`):
-
-**Module Export** (line 825):
-```python
-mcp = SimpleLilaMCPServer().app
-```
-- **Command**: `fastmcp dev simple_lila_mcp_server.py`
-- **Purpose**: Development testing with mock data
-- **Database**: Optional Neo4j, falls back to mock data
-- **Features**: Enhanced debug logging, additional resources
-
----
-
-#### 2. Data Management Entry Points
-
-**A. Import Data** (`import_data.py`):
-
-**CLI Execution** (lines 465-466):
-```python
-if __name__ == "__main__":
-    main()
-```
-
-**Full Command**:
+#### Run LilaMCPServer
 ```bash
-python import_data.py \
-  --seed-data seed_data.cypher \
-  --schema graphs/lila-graph-schema-v8.json \
-  --uri bolt://localhost:7687 \
-  --user neo4j \
-  --password passw0rd \
-  --create-defaults
+python lila_mcp_server.py
 ```
+**File**: `lila_mcp_server.py:778`
+**Function**: Starts the FastMCP server with Neo4j backend on localhost:8765
 
-**Main Function** (lines 409-463):
-1. Parse arguments
-2. Connect to Neo4j with retry logic (30 attempts, 2s intervals)
-3. Load schema (constraints, indexes)
-4. Import seed data OR create defaults
-5. Verify import (count nodes and relationships)
-6. Report results
-
-**B. Export Data** (`export_data.py`):
-
-**CLI Execution** (lines 294-295):
-```python
-if __name__ == "__main__":
-    main()
-```
-
-**Full Command**:
-```bash
-python export_data.py \
-  --output seed_data.cypher \
-  --uri bolt://localhost:7687 \
-  --user neo4j \
-  --password passw0rd
-```
-
-**Main Function** (lines 245-291):
-1. Parse arguments
-2. Connect to Neo4j
-3. Export personas, relationships, memories, goals
-4. Generate Cypher import script
-5. Write to output file
-6. Report statistics
-
----
-
-#### 3. Testing Entry Points
-
-**A. Validation Test** (`test_mcp_validation.py`):
-
-**CLI Execution** (lines 170-172):
-```python
-if __name__ == "__main__":
-    success = asyncio.run(main())
-    exit(0 if success else 1)
-```
-
-**Command**:
-```bash
-python test_mcp_validation.py
-```
-
-**Main Function** (lines 134-168):
-1. Print banner
-2. Test direct connection (in-memory)
-   - Connect to SimpleLilaMCPServer
-   - Test resources, tools, prompts
-   - Return component counts
-3. Test Inspector connection (HTTP)
-   - Connect to localhost:6274
-   - Validate Inspector integration
-4. Generate summary report
-5. Exit with status code
-
-**Test Coverage**:
-- Server connectivity (ping)
-- Resource listing and reading
-- Tool invocation (analyze_persona_compatibility)
-- Prompt retrieval (assess_attachment_style)
-- Inspector HTTP connection
-
-**B. Architecture Analysis** (`architecture.py`):
-
-**CLI Execution** (lines 361-362):
 ```python
 if __name__ == "__main__":
     asyncio.run(main())
 ```
 
-**Command**:
+#### Run SimpleLilaMCPServer
 ```bash
-python architecture.py
+python simple_lila_mcp_server.py
+# Or using FastMCP CLI:
+fastmcp dev simple_lila_mcp_server.py
 ```
+**File**: `simple_lila_mcp_server.py:827`
+**Function**: Starts the simplified MCP server with mock data
 
-**Main Function** (lines 282-358):
-1. Print configuration banner
-2. Define agents (analyzer, doc-writer)
-3. Create ClaudeSDKClient with options
-4. Run 5 analysis phases:
-   - Phase 1: Component inventory
-   - Phase 2: Architecture diagrams
-   - Phase 3: Data flows
-   - Phase 4: API documentation
-   - Phase 5: Synthesis
-5. Verify outputs
-6. Report completion
-
-**Output Files**:
-- `repo_analysis/docs/01_component_inventory.md`
-- `repo_analysis/diagrams/02_architecture_diagrams.md`
-- `repo_analysis/docs/03_data_flows.md`
-- `repo_analysis/docs/04_api_reference.md`
-- `repo_analysis/README.md`
+```python
+if __name__ == "__main__":
+    # For testing purposes
+    print("Simple Lila MCP Server ready for FastMCP Inspector")
+    print("Run with: fastmcp dev simple_lila_mcp_server.py")
+```
 
 ---
 
-#### 4. Infrastructure Entry Points
+### 2. Orchestrator Entry Points
 
-**A. Database Initialization** (`init_mcp_database.sh`):
-
-**CLI Execution**:
+#### Run Architecture Analysis
 ```bash
-./init_mcp_database.sh
+python -m orchestrators.architecture_orchestrator
+```
+**File**: `orchestrators/architecture_orchestrator.py:310`
+**Function**: Runs comprehensive repository architecture analysis
+
+```python
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(main())
 ```
 
-**Main Function** (lines 151-203):
-1. Verify correct directory (check for fastmcp.json)
-2. Start Docker Compose services
-3. Wait for Neo4j readiness (30 attempts, 2s intervals)
-4. Check for existing data
-5. Export from main system OR prepare for defaults
-6. Import data using import_data.py
-7. Verify import success
-8. Test MCP server with FastMCP
-9. Display next steps
+#### Run UX Design Workflow
+```bash
+python -m orchestrators.ux_orchestrator "Project Name"
+```
+**File**: `orchestrators/ux_orchestrator.py:616`
+**Function**: Runs comprehensive UX design workflow for specified project
 
-**Prerequisites**:
-- Docker Compose installed
-- Python 3 with neo4j package
-- fastmcp.json in current directory
-
-**Environment Variables**:
-- `NEO4J_URI` (default: bolt://localhost:7687)
-- `NEO4J_USER` (default: neo4j)
-- `NEO4J_PASSWORD` (default: passw0rd)
+```python
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(main())
+```
 
 ---
 
-## Dependencies and Imports
+### 3. Data Management Entry Points
 
-### External Dependencies
+#### Import Data to Neo4j
+```bash
+python import_data.py --schema graphs/lila-graph-schema-v8.json --create-defaults
+```
+**File**: `import_data.py:465`
+**Function**: Imports schema and seed data into Neo4j database
+
+**Arguments**:
+- `--seed-data` - Seed data Cypher file (default: `seed_data.cypher`)
+- `--schema` - Schema JSON file (default: `graphs/lila-graph-schema-v8.json`)
+- `--uri` - Neo4j URI (default: `bolt://localhost:7687`)
+- `--user` - Neo4j username (default: `neo4j`)
+- `--password` - Neo4j password (or use `NEO4J_PASSWORD` env var)
+- `--create-defaults` - Create default personas if no seed data found
+
+#### Export Data from Neo4j
+```bash
+python export_data.py --output seed_data.cypher
+```
+**File**: `export_data.py:294`
+**Function**: Exports personas, relationships, memories, and goals from Neo4j to Cypher file
+
+**Arguments**:
+- `--output` - Output Cypher file (default: `seed_data.cypher`)
+- `--uri` - Neo4j URI (default: `bolt://localhost:7687`)
+- `--user` - Neo4j username (default: `neo4j`)
+- `--password` - Neo4j password (or use `NEO4J_PASSWORD` env var)
+
+---
+
+### 4. Test Entry Points
+
+#### Run Orchestrator Tests
+```bash
+python test_orchestrators.py
+```
+**File**: `test_orchestrators.py:209`
+**Function**: Validates all components without requiring Claude API calls
+
+**Tests**:
+- Import validation for all modules
+- AgentRegistry functionality
+- MCPRegistry functionality
+- Orchestrator instantiation
+- FigmaIntegration setup
+
+```python
+if __name__ == "__main__":
+    import sys
+    sys.exit(main())
+```
+
+---
+
+## Module Organization
+
+### Public Modules (Exported in __all__)
+
+```
+orchestrators/
+  __init__.py                  → exports: BaseOrchestrator
+  base_orchestrator.py         → BaseOrchestrator, CrossOrchestratorCommunication
+  architecture_orchestrator.py → ArchitectureOrchestrator
+  ux_orchestrator.py           → UXOrchestrator
+
+agents/
+  __init__.py                  → exports: AgentRegistry
+  registry.py                  → AgentRegistry
+
+tools/
+  __init__.py                  → exports: MCPRegistry, FigmaIntegration
+  mcp_registry.py              → MCPRegistry
+  figma_integration.py         → FigmaIntegration
+```
+
+### Standalone Modules (Direct Execution)
+
+```
+lila_mcp_server.py             → LilaMCPServer (main MCP server)
+simple_lila_mcp_server.py      → SimpleLilaMCPServer (mock data server)
+import_data.py                 → Neo4jDataImporter
+export_data.py                 → Neo4jDataExporter
+test_orchestrators.py          → Test suite
+```
+
+### Legacy/Reference Modules
+
+```
+architecture.py                → Original analysis script (pre-orchestrator framework)
+```
+
+---
+
+## Design Patterns
+
+### 1. Abstract Base Class Pattern
+- `BaseOrchestrator` defines common orchestrator interface
+- Subclasses implement domain-specific workflows
+- Enforces consistent API through abstract methods: `get_agent_definitions()`, `get_allowed_tools()`, `run()`
+
+### 2. Registry Pattern
+- `AgentRegistry` - Centralized agent discovery and loading
+  - Discovers JSON agent definitions from filesystem
+  - Caches loaded agents to avoid re-parsing
+- `MCPRegistry` - Centralized MCP server management
+  - Tracks available servers and their capabilities
+  - Provides fallback options for unavailable tools
+- Enables dynamic configuration and extensibility
+
+### 3. Mixin Pattern
+- `CrossOrchestratorCommunication` - Adds cross-domain communication capabilities
+- Can be mixed into orchestrators that need inter-orchestrator coordination
+- Maintains registry of orchestrators and provides invocation interface
+
+### 4. Strategy Pattern
+- Multiple orchestrators (Architecture, UX) implement different domain strategies
+- Same base interface (`BaseOrchestrator`), different workflow implementations
+- Each orchestrator defines its own agents, tools, and phase execution
+
+### 5. Template Method Pattern
+- `BaseOrchestrator.run_with_client()` provides template workflow:
+  1. Display header
+  2. Create client options
+  3. Create client context
+  4. Call subclass `run()` method
+  5. Display summary
+  6. Clean up client
+- Subclasses implement specific `run()` method with phases
+
+### 6. Facade Pattern
+- `FigmaIntegration` provides unified interface to Figma MCP/API
+- Hides complexity of multiple integration methods (MCP server, REST API, manual)
+- Provides fallback instructions when integration unavailable
+
+### 7. Dependency Injection
+- Orchestrators receive `ClaudeSDKClient` through `run_with_client()`
+- Agents receive tool lists through `AgentDefinition`
+- Allows for easier testing and flexibility
+
+---
+
+## Dependencies
+
+### External Libraries (from imports)
+
+**Core SDK**:
+- `claude_agent_sdk` - Claude Agent SDK for orchestration
+  - `AgentDefinition`, `ClaudeAgentOptions`, `ClaudeSDKClient`
+  - Message types: `AssistantMessage`, `UserMessage`, `ResultMessage`
+  - Block types: `TextBlock`, `ToolUseBlock`, `ToolResultBlock`
 
 **MCP Framework**:
-- **fastmcp** (v2.12.3+)
-  - Used in: `lila_mcp_server.py`, `simple_lila_mcp_server.py`, `test_mcp_validation.py`
-  - Key imports: `FastMCP`, `Client`, `Resource`, `Tool`, `Prompt`
-  - Purpose: MCP protocol implementation and server framework
+- `fastmcp` - FastMCP server framework
+  - `FastMCP` - Main server class
+  - Decorators: `@app.resource()`, `@app.tool()`, `@app.prompt()`, `@app.custom_route()`
 
 **Database**:
-- **neo4j** (v5.15.0+)
-  - Used in: `lila_mcp_server.py`, `simple_lila_mcp_server.py`, `import_data.py`, `export_data.py`
-  - Key imports: `GraphDatabase`
-  - Purpose: Neo4j Python driver for graph database operations
+- `neo4j` - Neo4j Python driver
+  - `GraphDatabase` - Connection driver
 
-**LLM Integration**:
-- **openai** (v1.30.0+): OpenAI API client (configured but not directly used in main modules)
-- **anthropic** (v0.25.0+): Anthropic API client (configured but not directly used in main modules)
+**HTTP Server**:
+- `starlette` - ASGI framework (used by FastMCP)
+  - `Request`, `Response`, `JSONResponse` - HTTP primitives
 
-**Data Validation**:
-- **pydantic** (v2.6.0+): Data validation and type safety
-- **pydantic-settings** (v2.2.0+): Settings management from environment
+**Standard Library**:
+- `asyncio` - Async/await support
+- `pathlib` - Path operations (`Path`)
+- `typing` - Type hints (`Dict`, `List`, `Optional`, `Any`, `Union`)
+- `abc` - Abstract base classes (`ABC`, `abstractmethod`)
+- `json` - JSON parsing
+- `argparse` - CLI argument parsing
+- `logging` - Logging framework
+- `os` - Environment variables, file operations
+- `subprocess` - Process management
+- `sys` - System operations, exit codes
+- `time` - Sleep/retry delays
+- `datetime` - Timestamps (`datetime`)
 
-**Configuration**:
-- **python-dotenv**
-  - Used in: `lila_mcp_server.py` (lines 15-16), `simple_lila_mcp_server.py` (lines 15-16)
-  - Key imports: `load_dotenv`
-  - Purpose: Load environment variables from .env file
-
-**Observability**:
-- **logfire** (v0.28.0+): Telemetry and monitoring (configured, usage optional)
-
-**Agent Framework**:
-- **claude-agent-sdk** (v0.1.0+)
-  - Used in: `architecture.py` (lines 13-24)
-  - Key imports: `AgentDefinition`, `AssistantMessage`, `ClaudeAgentOptions`, `ClaudeSDKClient`, `ResultMessage`, `TextBlock`, `ToolResultBlock`, `ToolUseBlock`, `UserMessage`
-  - Purpose: Claude Agent SDK for automated documentation generation
-
-**HTTP Clients**:
-- **httpx** (v0.27.0+): Modern async HTTP client (configured but not directly imported)
-- **aiohttp** (v3.9.0+): Async HTTP client/server (configured but not directly imported)
-
-**CLI**:
-- **click** (v8.1.0+): Command-line interface creation (configured but not directly used)
-
-### Standard Library Imports
-
-**Core Async and System**:
-- `asyncio`: Async runtime and event loops
-  - Used in: All async modules for coroutines and tasks
-- `logging`: Logging framework
-  - Used in: All modules for structured logging
-- `os`: Operating system interface
-  - Used in: All modules for environment variables and file operations
-- `sys`: System-specific parameters and functions
-  - Used in: `import_data.py` (line 13), `export_data.py` (line 14) for exit codes
-- `pathlib.Path`: Object-oriented filesystem paths
-  - Used in: `architecture.py` (line 12), `import_data.py` (line 17), `export_data.py` (line 15)
-
-**Data Handling**:
-- `datetime`: Date and time handling
-  - Used in: `lila_mcp_server.py` (line 10), `simple_lila_mcp_server.py` (line 10)
-  - Purpose: Timestamps for interactions and updates
-- `json`: JSON encoding/decoding
-  - Used in: `import_data.py` (line 15), `export_data.py` (line 18)
-  - Purpose: Schema parsing and data serialization
-- `argparse`: Command-line argument parsing
-  - Used in: `import_data.py` (line 14), `export_data.py` (line 14)
-  - Purpose: CLI interface for data management scripts
-- `time`: Time access and conversions
-  - Used in: `import_data.py` (line 16)
-  - Purpose: Retry delay in connection logic
-
-**Type Hints**:
-- `typing`: Type hints support
-  - Used in: All modules for type annotations
-  - Common imports: `Dict`, `List`, `Optional`, `Any`, `Union`
-  - Purpose: Static type checking and IDE support
+**Environment**:
+- `dotenv` - Environment variable management (`load_dotenv`)
 
 ---
 
-## Component Relationships
+## Configuration
 
-### Dependency Graph
+### Environment Variables
 
-```
-Production Stack:
-├── lila_mcp_server.py (Entry: Production MCP Server)
-│   ├── fastmcp → MCP protocol implementation
-│   ├── neo4j → Live database queries
-│   ├── dotenv → Environment configuration
-│   └── logging → Server observability
-│
-├── import_data.py (Entry: Database Import)
-│   ├── neo4j → Database writes with retry logic
-│   ├── json → Schema parsing
-│   └── argparse → CLI interface
-│
-├── export_data.py (Entry: Database Export)
-│   ├── neo4j → Database reads
-│   └── argparse → CLI interface
-│
-└── init_mcp_database.sh (Entry: Infrastructure Setup)
-    ├── docker-compose → Container orchestration
-    ├── import_data.py → Data initialization
-    └── export_data.py → Main system export
+**Neo4j Connection**:
+- `NEO4J_URI` - Neo4j connection URI (default: `bolt://localhost:7687`)
+- `NEO4J_USER` - Neo4j username (default: `neo4j`)
+- `NEO4J_PASSWORD` - Neo4j password (default: `passw0rd`)
 
-Development Stack:
-├── simple_lila_mcp_server.py (Entry: Development Server)
-│   ├── fastmcp → MCP protocol implementation
-│   └── logging → Debug output (enhanced)
-│
-├── test_mcp_validation.py (Entry: Validation Tests)
-│   ├── fastmcp.Client → Server testing framework
-│   └── simple_lila_mcp_server → Test target
-│
-└── architecture.py (Entry: Documentation Generator)
-    ├── claude_agent_sdk → Automated analysis
-    └── asyncio → Async execution
+**Figma Integration**:
+- `FIGMA_ACCESS_TOKEN` - Figma personal access token (optional)
+- `FIGMA_FILE_ID` - Figma file ID (optional)
 
-Configuration Files:
-├── pyproject.toml → Project dependencies and build
-├── fastmcp.json → FastMCP server discovery
-├── .env.example → Environment template
-└── .mcp.json → Claude Desktop MCP client config
-```
+**Vercel v0 Integration**:
+- `V0_API_KEY` - Vercel v0 API key (optional)
 
-### Data Flow Patterns
-
-**1. Production Data Flow**:
-```
-Neo4j Database
-    ↓ (read)
-lila_mcp_server.py
-    ↓ (MCP protocol)
-FastMCP Framework
-    ↓ (SSE/HTTP)
-MCP Clients (Claude, etc.)
-```
-
-**2. Development Data Flow**:
-```
-Mock Data (in-memory)
-    ↓ (read)
-simple_lila_mcp_server.py
-    ↓ (MCP protocol)
-FastMCP Framework
-    ↓ (SSE/HTTP)
-MCP Inspector / Test Clients
-```
-
-**3. Database Initialization Flow**:
-```
-Main Lila System (optional)
-    ↓ (export via export_data.py)
-seed_data.cypher
-    ↓ (import via import_data.py)
-Neo4j Database
-    ↑ (verify)
-init_mcp_database.sh (orchestration)
-```
-
-**4. Testing Flow**:
-```
-SimpleLilaMCPServer
-    ↓ (direct connection)
-FastMCP Client
-    ↓ (test assertions)
-test_mcp_validation.py
-    ↓ (exit code)
-CI/CD Pipeline
-```
-
----
-
-## File Size Statistics
-
-| File | Lines | Purpose | Complexity |
-|------|-------|---------|------------|
-| `lila_mcp_server.py` | 779 | Full production MCP server | High |
-| `simple_lila_mcp_server.py` | 830 | Simplified development server | Medium |
-| `import_data.py` | 466 | Neo4j data import utility | Medium |
-| `export_data.py` | 295 | Neo4j data export utility | Low |
-| `test_mcp_validation.py` | 172 | MCP validation test suite | Low |
-| `architecture.py` | 363 | Architecture analysis tool | Medium |
-| `init_mcp_database.sh` | 203 | Database initialization script | Medium |
-| `pyproject.toml` | 77 | Project configuration | Low |
-| `.env.example` | 151 | Environment template | Low |
-
-**Total Code**: ~3,336 lines (excluding tests and documentation)
-
-**Code Distribution**:
-- MCP Servers: 1,609 lines (48%)
-- Data Management: 761 lines (23%)
-- Testing/Analysis: 535 lines (16%)
-- Configuration: 431 lines (13%)
-
----
-
-## Configuration Surface
-
-### Required Environment Variables
-
-**Production Deployment**:
-- `NEO4J_URI`: Neo4j connection string (default: `bolt://localhost:7687`)
-- `NEO4J_USER`: Database username (default: `neo4j`)
-- `NEO4J_PASSWORD`: Database password (default: `passw0rd`)
-
-### Optional Configuration
-
-**Server Settings**:
-- `MCP_HOST`: Server host (default: `localhost`)
-- `MCP_PORT`: Server port (default: `8765`)
-- `MCP_TRANSPORT`: Transport protocol (default: `sse`)
-
-**Logging and Observability**:
-- `LOG_LEVEL`: Logging verbosity (default: `INFO`)
-- `ENABLE_LOGFIRE_TELEMETRY`: Enable observability (default: `false`)
-- `LOGFIRE_PROJECT_NAME`: Project name for telemetry
-
-**Development Options**:
-- `DEBUG_MODE`: Enable debug features
-- `DISABLE_NEO4J`: Disable database connection (use mock data)
-- `MIGRATION_PHASE`: Track migration progress
-
-**Performance Tuning**:
-- `NEO4J_TIMEOUT`: Connection timeout
-- `NEO4J_MAX_RETRY_TIME`: Maximum retry duration
-- `MAX_CONCURRENT_REQUESTS`: Concurrency limit
-- `MEMORY_LIMIT_MB`: Memory limit
-
-**Security Settings**:
-- `ENABLE_AUTH`: Authentication flag
-- `CORS_ALLOWED_ORIGINS`: CORS configuration
-- `RATE_LIMIT_ENABLED`: Rate limiting flag
-- `TLS_ENABLED`: TLS/SSL flag
-
-### Configuration File Hierarchy
-
-1. **fastmcp.json**: FastMCP server discovery and entrypoint
-2. **.env**: Runtime environment variables (loaded by python-dotenv)
-3. **.env.example**: Template for environment configuration
-4. **pyproject.toml**: Project dependencies and build configuration
-5. **.mcp.json**: MCP client configuration for Claude Desktop
+**Logging**:
+- FastMCP debug logging enabled in `simple_lila_mcp_server.py:28-29`:
+  ```python
+  logging.basicConfig(level=logging.DEBUG)
+  logging.getLogger("fastmcp.server").setLevel(logging.DEBUG)
+  ```
 
 ---
 
 ## Summary
 
-This codebase implements a complete psychological intelligence MCP server with:
+### Component Counts
 
-### Core Features
+- **MCP Servers**: 2 (LilaMCPServer, SimpleLilaMCPServer)
+- **Orchestrators**: 3 (Base, Architecture, UX) + 1 mixin (CrossOrchestratorCommunication)
+- **Registries**: 2 (AgentRegistry, MCPRegistry)
+- **Integrations**: 1 (FigmaIntegration)
+- **Data Importers/Exporters**: 2 (Neo4jDataImporter, Neo4jDataExporter)
+- **Test Modules**: 1 (test_orchestrators)
+- **Legacy Modules**: 1 (architecture.py)
 
-**1. Dual Server Implementations**:
-- **Production** (`lila_mcp_server.py`): Full Neo4j integration, 5 resources, 6 tools, 3 prompts
-- **Development** (`simple_lila_mcp_server.py`): Mock data fallback, 9 resources, 8 tools, 3 prompts
+### Public API Surface
 
-**2. Comprehensive MCP Interface**:
-- **Resources**: Persona profiles, relationships, interactions, emotional climate, psychological insights
-- **Tools**: Relationship updates, interaction recording, compatibility analysis, strategy selection, goal assessment, response generation
-- **Prompts**: Attachment style assessment, emotional climate analysis, secure response generation
+**Classes**: 11 public classes
+- 2 MCP servers
+- 4 orchestrators (including base + mixin)
+- 2 registries
+- 1 integration wrapper
+- 2 data management classes
 
-**3. Database Management**:
-- **Import Utility**: Schema loading, retry logic, DISC to Big Five mapping, default persona creation
-- **Export Utility**: Multi-entity export (personas, relationships, memories, goals), Cypher script generation
+**Entry Points**: 8 main entry points
+- 2 MCP server runners
+- 2 orchestrator runners
+- 2 data management scripts
+- 1 test runner
+- 1 legacy script
 
-**4. Testing Infrastructure**:
-- **Validation Suite**: Direct connection testing, Inspector integration testing, comprehensive component validation
-- **Architecture Analysis**: Automated documentation generation using Claude Agent SDK
+**Total Python Files**: 17
+- 11 implementation files
+- 3 `__init__.py` files
+- 2 test files
+- 1 legacy file
 
-**5. Infrastructure Automation**:
-- **Initialization Script**: Docker Compose orchestration, Neo4j readiness checks, data import/export coordination
+### Internal Implementation
 
-### Key Design Patterns
+**Private Methods**: Prefixed with `_`
+- `_setup_database()`, `_connect_with_retry()`, `_load_family_graph_data()`, `_map_behavioral_to_bigfive()`
 
-**Psychological Modeling**:
-- Attachment theory (secure, anxious, avoidant, exploratory)
-- Big Five personality traits (OCEAN model)
-- Graph database for relationship modeling
-- Emotional valence tracking
-- Relationship metrics (trust, intimacy, strength)
+**Internal Modules**:
+- `architecture.py` (legacy implementation)
+- Package `__init__.py` files (define public exports)
 
-**Software Architecture**:
-- MCP protocol for AI integration
-- Retry logic and error handling for reliability
-- Mock data for development without infrastructure
-- Health check endpoints for container orchestration
-- CLI interfaces for all utilities
-- Async/await throughout for scalability
+---
 
-**Development Workflow**:
-- FastMCP Inspector for visual testing
-- Direct in-memory testing for fast iteration
-- Comprehensive validation suite
-- Automated documentation generation
-- Environment-based configuration
+## Usage Patterns
 
-### Deployment Options
+### Starting an MCP Server
+```python
+from lila_mcp_server import LilaMCPServer
+import asyncio
 
-**Development**:
-```bash
-fastmcp dev                          # Full server with Inspector
-fastmcp dev simple_lila_mcp_server.py  # Simplified server with Inspector
-python test_mcp_validation.py       # Validation tests
+server = LilaMCPServer()
+asyncio.run(server.run_server())
 ```
 
-**Production**:
-```bash
-./init_mcp_database.sh              # Initialize infrastructure
-fastmcp run                         # Production HTTP server
-python lila_mcp_server.py           # Direct SSE server
+### Running an Orchestrator
+```python
+from orchestrators.architecture_orchestrator import ArchitectureOrchestrator
+import asyncio
+
+orchestrator = ArchitectureOrchestrator()
+asyncio.run(orchestrator.run_with_client())
 ```
 
-**Data Management**:
-```bash
-python import_data.py --schema schema.json --create-defaults
-python export_data.py --output seed_data.cypher
+### Loading Agents
+```python
+from agents.registry import AgentRegistry
+
+registry = AgentRegistry()
+ux_researcher = registry.load_agent('ux_researcher', domain='ux')
+print(f"Tools: {ux_researcher.tools}")
 ```
 
-**Documentation**:
-```bash
-python architecture.py              # Generate comprehensive docs
+### Checking MCP Tool Availability
+```python
+from tools.mcp_registry import MCPRegistry
+
+mcp = MCPRegistry()
+if mcp.is_server_available('figma'):
+    tools = mcp.get_server_tools('figma')
+    print(f"Figma tools: {tools}")
+else:
+    fallbacks = mcp.get_fallback_options('figma_get_file')
+    print(f"Fallbacks: {fallbacks}")
 ```
 
-### Technology Stack
+### Creating a Custom Orchestrator
+```python
+from orchestrators.base_orchestrator import BaseOrchestrator
+from claude_agent_sdk import AgentDefinition
+from typing import Dict, List
 
-**Core Technologies**:
-- Python 3.12+
-- FastMCP framework
-- Neo4j graph database
-- Docker Compose
+class CustomOrchestrator(BaseOrchestrator):
+    def __init__(self):
+        super().__init__(domain_name="custom", output_base_dir=Path("outputs"))
 
-**Key Libraries**:
-- fastmcp: MCP protocol implementation
-- neo4j: Graph database driver
-- pydantic: Data validation
-- python-dotenv: Configuration management
-- claude-agent-sdk: Automated documentation
+    def get_agent_definitions(self) -> Dict[str, AgentDefinition]:
+        return {
+            "my-agent": AgentDefinition(
+                description="Custom agent",
+                prompt="You are a custom agent...",
+                tools=["Read", "Write"],
+                model="sonnet"
+            )
+        }
 
-**Development Tools**:
-- pytest: Testing framework
-- black: Code formatting
-- ruff: Linting
-- uv: Package management
+    def get_allowed_tools(self) -> List[str]:
+        return ["Read", "Write", "Grep", "Glob"]
+
+    async def run(self):
+        await self.execute_phase(
+            phase_name="Phase 1",
+            agent_name="my-agent",
+            prompt="Do something...",
+            client=self.client
+        )
+```
+
+---
+
+This component inventory provides a complete map of the codebase's structure, making it easier to navigate, extend, and maintain the system.
